@@ -26,24 +26,41 @@ DHT dht(DHTPIN, DHTTYPE, 15);
 #define   MESH_PASSWORD   "somethingSneaky"
 #define   MESH_PORT       5555
 
+int SensorFlag = 1;
+int totaltemp = 0;
+int totalhumi = 0;
+bool exeOnceBroadcast = true;
+unsigned long broadcastStartingTime = 0;
+unsigned long noConnectionStartTime = 0;
+bool exeOnceConnection = true;
+String msg="";
+
+// === Time Spec ===
+unsigned long broadcastTimeout = 20 * 1000;
+//unsigned long sleepInterval = 4294967295;
+unsigned long sleepInterval = 20 * 1000000;
+unsigned long noConnectionTimeout = 30 * 1000;
+unsigned long dT = 2*1000000;
+// === Time Spec ===
+
 painlessMesh  mesh;
 bool calc_delay = false;
 SimpleList<uint32_t> nodes;
 
 void sendMessage() ; // Prototype
-Task taskSendMessage( TASK_SECOND * 1, TASK_FOREVER, &sendMessage ); // start with a one second interval
+void obtainMessage();
 
+Task taskSendMessage( TASK_SECOND * 5, TASK_FOREVER, &sendMessage ); // start with a one second interval
+Task obtainSensorData(TASK_SECOND * 3, TASK_FOREVER, &obtainMessage);// obtain the reading from sensors
 // Task to blink the number of nodes
 Task blinkNoNodes;
 bool onFlag = false;
 
 void setup() {
   Serial.begin(115200);
-  
   dht.begin();
   pinMode(LED1, OUTPUT);
   pinMode(5, INPUT);
-
   pinMode(LED2, OUTPUT);
 
   //mesh.setDebugMsgTypes( ERROR | MESH_STATUS | CONNECTION | SYNC | COMMUNICATION | GENERAL | MSG_TYPES | REMOTE ); // all types on
@@ -56,9 +73,12 @@ void setup() {
   mesh.onChangedConnections(&changedConnectionCallback);
   mesh.onNodeTimeAdjusted(&nodeTimeAdjustedCallback);
   mesh.onNodeDelayReceived(&delayReceivedCallback);
-
+  
+  mesh.scheduler.addTask( obtainSensorData );
+  obtainSensorData.enable();
   mesh.scheduler.addTask( taskSendMessage );
   taskSendMessage.enable() ;
+  
 
   blinkNoNodes.set(BLINK_PERIOD, (mesh.getNodeList().size() + 1) * 2, []() {
       // If on, switch off, else switch on
@@ -87,47 +107,77 @@ void setup() {
 void loop() {
 
   mesh.update();
-  int h = dht.readHumidity();
-  int t = dht.readTemperature();
+//  int h = dht.readHumidity();
+//  int t = dht.readTemperature();
   digitalWrite(LED2, !onFlag);
-    if (h <= 70){
-     digitalWrite(LED1, LOW);
-    // delay(3000)
-    }else{
-      digitalWrite(LED1, HIGH);
-    }
-    
-    
-  
-
+//    if (h <= 70){
+//     digitalWrite(LED1, LOW);
+//    // delay(3000)
+//    }else{
+//      digitalWrite(LED1, HIGH);
+//    }
+//    
 }
 
-void sendMessage() {
+void obtainMessage() {
   int h = dht.readHumidity();
   int t = dht.readTemperature();
-  String msg = "Test ";
-  msg += mesh.getNodeId();
-  msg += " Temperature: ";
-  msg += String(t);
-  msg += "Humidity: ";
-  msg += String(h);
-  msg += " myFreeMemory: " + String(ESP.getFreeHeap());
-  msg += " noTasks: " + String(mesh.scheduler.size());
-  bool error = mesh.sendBroadcast(msg);
-
-  if (calc_delay) {
-    SimpleList<uint32_t>::iterator node = nodes.begin();
-    while (node != nodes.end()) {
-      mesh.startDelayMeas(*node);
-      node++;
+  totaltemp +=t;
+  totalhumi +=h;
+  SensorFlag +=1;
+  if (SensorFlag > 5){
+    if ((totaltemp/5 > 1000 )||( totalhumi/5 >1000)) {
+      msg += "NaN";
+    }else{
+      msg += "Test ";
+      msg += mesh.getNodeId();
+      msg += " Temperature: ";
+      msg += String(floor(totaltemp/5));
+      msg += "Humidity: ";
+      msg += String(floor(totalhumi/5));
+      msg += " myFreeMemory: " + String(ESP.getFreeHeap());
+      msg += " noTasks: " + String(mesh.scheduler.size());  
     }
-    calc_delay = false;
+    SensorFlag =0;
   }
+  obtainSensorData.setInterval(TASK_SECOND * 3);
+}
 
-  Serial.printf("Sending message: %s\n", msg.c_str());
-  
-  taskSendMessage.setInterval(TASK_SECOND * 5);  // 1 seconds
-  ESP.deepSleep(2*1000000);
+
+void sendMessage(){
+
+  if (mesh.getNodeList().size()>0 ) {    
+    if (msg !=""){
+      if (exeOnceBroadcast) {
+        exeOnceBroadcast = false;
+        broadcastStartingTime = millis();
+      }
+      bool error = mesh.sendBroadcast(msg);
+      unsigned long currentTime = millis();
+      if (currentTime - broadcastStartingTime > broadcastTimeout) {
+        ESP.deepSleep(sleepInterval);
+      } // broadcst timeout
+  //    if (calc_delay) {
+  //      SimpleList<uint32_t>::iterator node = nodes.begin();
+  //      while (node != nodes.end()) {
+  //        mesh.startDelayMeas(*node);
+  //        node++;
+  //      }
+  //      calc_delay = false;
+  //    }
+    Serial.printf("Sending message: %s\n", msg.c_str()); 
+    }
+  }else {
+    if (exeOnceConnection){
+      noConnectionStartTime = millis();
+      exeOnceConnection = false;
+    }
+    Serial.printf("No connection time: %.2f\n",(millis() - noConnectionStartTime)/1000.0);
+    Serial.printf("Current time: %.2f\n", millis()/1000.0);
+    if (millis() - noConnectionStartTime > noConnectionTimeout) {
+      ESP.deepSleep(sleepInterval - dT);
+    }
+  }
 }
 
 
