@@ -1,15 +1,20 @@
 //************************************************************
-// this is a simple example that uses the easyMesh library
 //
 // 1. blinks led once for every node on the mesh
 // 2. blink cycle repeats every BLINK_PERIOD
-// 3. sends a silly message to every node on the mesh at a random time betweew 1 and 5 seconds
+// 3. sends a message to every node on the mesh 
 // 4. prints anything it recieves to Serial.print
+// 5. extend sleep duration as specified
+// 6. averaging sensor reading to eliminate error
+// 7. 
 //
 //
 //************************************************************
 #include <painlessMesh.h>
 #include "DHT.h"
+extern "C" {
+  #include "user_interface.h"
+}
 
 // some gpio pin that is connected to an LED...
 // on my rig, this is 5, change to the right number of your LED.
@@ -25,6 +30,10 @@ DHT dht(DHTPIN, DHTTYPE, 15);
 #define   MESH_SSID       "whateverYouLike"
 #define   MESH_PASSWORD   "somethingSneaky"
 #define   MESH_PORT       5555
+
+
+uint32_t timeHistory;
+uint32_t initializer;
 
 int SensorFlag = 1;
 int totaltemp = 0;
@@ -58,11 +67,31 @@ bool onFlag = false;
 
 void setup() {
   Serial.begin(115200);
-  dht.begin();
   pinMode(LED1, OUTPUT);
   pinMode(5, INPUT);
   pinMode(LED2, OUTPUT);
-
+  
+  ESP.rtcUserMemoryRead(64, &initializer, sizeof(uint32_t));
+  ESP.rtcUserMemoryRead(64+sizeof(uint32_t), &timeHistory, sizeof(uint32_t));
+  Serial.println("Works Fine!");
+  if (initializer != 123){
+    Serial.println("first time");
+    initializer = 123;
+    timeHistory=1;
+  }else{
+    timeHistory +=1;
+    Serial.print("rtc = ");
+    Serial.println(timeHistory);
+  }
+  ESP.rtcUserMemoryWrite(64,&initializer,sizeof(uint32_t));
+  ESP.rtcUserMemoryWrite(64+sizeof(uint32_t), &timeHistory, sizeof(uint32_t));
+  if (timeHistory<5){
+    ESP.deepSleep(10*1000000);
+  }else{
+    timeHistory=0;
+    ESP.rtcUserMemoryWrite(64+sizeof(uint32_t),&timeHistory,sizeof(uint32_t));
+  }
+  dht.begin();
   //mesh.setDebugMsgTypes( ERROR | MESH_STATUS | CONNECTION | SYNC | COMMUNICATION | GENERAL | MSG_TYPES | REMOTE ); // all types on
   //mesh.setDebugMsgTypes(ERROR | DEBUG | CONNECTION | COMMUNICATION);  // set before init() so that you can see startup messages
   mesh.setDebugMsgTypes(ERROR | DEBUG | CONNECTION);  // set before init() so that you can see startup messages
@@ -122,9 +151,9 @@ void loop() {
 void obtainMessage() {
   int h = dht.readHumidity();
   int t = dht.readTemperature();
-  totaltemp +=t;
-  totalhumi +=h;
-  SensorFlag +=1;
+  totaltemp += t;
+  totalhumi += h;
+  SensorFlag += 1;
   if (SensorFlag > 5){
     if ((totaltemp/5 > 1000 )||( totalhumi/5 >1000)) {
       msg += "NaN";
@@ -167,7 +196,7 @@ void sendMessage(){
   //    }
     Serial.printf("Sending message: %s\n", msg.c_str()); 
     }
-  }else {
+  }else{
     if (exeOnceConnection){
       noConnectionStartTime = millis();
       exeOnceConnection = false;
@@ -175,12 +204,12 @@ void sendMessage(){
     Serial.printf("No connection time: %.2f\n",(millis() - noConnectionStartTime)/1000.0);
     Serial.printf("Current time: %.2f\n", millis()/1000.0);
     if (millis() - noConnectionStartTime > noConnectionTimeout) {
-      ESP.deepSleep(sleepInterval - dT);
+    ESP.deepSleep(sleepInterval - dT);
     }
   }
 }
 
-
+//=====================buildin tasks to keep mesh network================
 void receivedCallback(uint32_t from, String & msg) {
   Serial.printf("startHere: Received from %u msg=%s\n", from, msg.c_str());
 }
