@@ -74,7 +74,7 @@ void setup() {
 //--------------------Extend Sleep Time If > 71 Mins By Accessing RTC Memory---------------
   ESP.rtcUserMemoryRead(64, &initializer, sizeof(uint32_t));
   ESP.rtcUserMemoryRead(64+sizeof(uint32_t), &UpdatedSleepTime, sizeof(uint32_t));
-  Serial.println("Works Fine!");
+  // Serial.println("Works Fine!");
   if (initializer != 123){
     Serial.println("first time");
     initializer = 123;
@@ -82,21 +82,22 @@ void setup() {
     ESP.rtcUserMemoryWrite(64, &initializer, sizeof(uint32_t));
     ESP.rtcUserMemoryWrite(64+sizeof(uint32_t), &UpdatedSleepTime, sizeof(uint32_t));
   }else{
-    UpdatedSleepTime -= SleepInterval;
-    if (UpdatedSleepTime >0){
-      if (UpdatedSleepTime/(SleepInterval) > 0){
-        Serial.print("Remaining Sleep Time: ");
-        Serial.println(UpdatedSleepTime);        
-        ESP.rtcUserMemoryWrite(64+sizeof(uint32_t), &UpdatedSleepTime, sizeof(uint32_t));
-        ESP.deepSleep(SleepInterval);
-      }else{
-        Serial.print("Remaining Sleep Time: ");
-        Serial.println(UpdatedSleepTime); 
-        FinalSleep = UpdatedSleepTime;
-        UpdatedSleepTime = 0;
-        ESP.rtcUserMemoryWrite(64+sizeof(uint32_t), &UpdatedSleepTime, sizeof(uint32_t));
-        ESP.deepSleep(FinalSleep);
-      }
+    // UpdatedSleepTime -= SleepInterval;
+    if (UpdatedSleepTime > SleepInterval){
+      Serial.print("Remaining Sleep Time: ");
+      Serial.println(UpdatedSleepTime);
+      UpdatedSleepTime -= SleepInterval;
+      ESP.rtcUserMemoryWrite(64+sizeof(uint32_t), &UpdatedSleepTime, sizeof(uint32_t));
+      ESP.deepSleep(SleepInterval);
+    } else if (UpdatedSleepTime > 0){
+      Serial.print("Remaining Sleep Time: ");
+      Serial.println(UpdatedSleepTime); 
+      FinalSleep = UpdatedSleepTime;
+      UpdatedSleepTime = 0;
+      ESP.rtcUserMemoryWrite(64+sizeof(uint32_t), &UpdatedSleepTime, sizeof(uint32_t));
+      ESP.deepSleep(FinalSleep);
+    } else {
+      continue;
     }
   }
 //----------------------------------------------------------------------------------------
@@ -183,12 +184,17 @@ void sendMessage(){
       bool error = mesh.sendBroadcast(msg);
       unsigned long currentTime = millis();
       if (currentTime - broadcastStartingTime > broadcastTimeout) {
-        UpdatedSleepTime = SleepTime-OffsetTime*1000+random(0,500000);
-        ESP.rtcUserMemoryWrite(64+sizeof(uint32_t), &UpdatedSleepTime, sizeof(uint32_t));
+        UpdatedSleepTime = SleepTime - OffsetTime + random(0,500000);
+        
         if (UpdatedSleepTime > SleepInterval){
+          UpdatedSleepTime -= SleepInterval;
+          ESP.rtcUserMemoryWrite(64+sizeof(uint32_t), &UpdatedSleepTime, sizeof(uint32_t));
           ESP.deepSleep(SleepInterval);
         }else{
-          ESP.deepSleep(UpdatedSleepTime);
+          uint32_t TempSleepInterval = UpdatedSleepTime;
+          UpdatedSleepTime = 0;
+          ESP.rtcUserMemoryWrite(64+sizeof(uint32_t), &UpdatedSleepTime, sizeof(uint32_t));
+          ESP.deepSleep(TempSleepInterval);
         }
       }
     Serial.printf("Sending message: %s\n", msg.c_str()); 
