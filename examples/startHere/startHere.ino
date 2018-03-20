@@ -82,7 +82,7 @@ void setup() {
     ESP.rtcUserMemoryWrite(64, &initializer, sizeof(uint32_t));
     ESP.rtcUserMemoryWrite(64+sizeof(uint32_t), &UpdatedSleepTime, sizeof(uint32_t));
   }else{
-    UpdatedSleepTime = UpdatedSleepTime - SleepInterval;
+    UpdatedSleepTime -= SleepInterval;
     if (UpdatedSleepTime >0){
       if (UpdatedSleepTime/(SleepInterval) > 0){
         Serial.print("Remaining Sleep Time: ");
