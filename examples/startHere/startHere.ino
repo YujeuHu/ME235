@@ -48,7 +48,7 @@ bool exeOnceConnection = true;
 String msg="";
 
 //--------Time Spec----------
-unsigned long broadcastTimeout = 10 * 1000;//milli
+unsigned long broadcastTimeout = 20 * 1000;//milli
 //unsigned long sleepInterval = 4294967295; //micro
 unsigned long noConnectionTimeout = 9 * 1000;//milli
 
@@ -74,7 +74,7 @@ void setup() {
 //--------------------Extend Sleep Time If > 71 Mins By Accessing RTC Memory---------------
   ESP.rtcUserMemoryRead(64, &initializer, sizeof(uint32_t));
   ESP.rtcUserMemoryRead(64+sizeof(uint32_t), &UpdatedSleepTime, sizeof(uint32_t));
-  // Serial.println("Works Fine!");
+  Serial.println("Works Fine!");
   if (initializer != 123){
     Serial.println("first time");
     initializer = 123;
@@ -82,7 +82,6 @@ void setup() {
     ESP.rtcUserMemoryWrite(64, &initializer, sizeof(uint32_t));
     ESP.rtcUserMemoryWrite(64+sizeof(uint32_t), &UpdatedSleepTime, sizeof(uint32_t));
   }else{
-    // UpdatedSleepTime -= SleepInterval;
     if (UpdatedSleepTime > SleepInterval){
       Serial.print("Remaining Sleep Time: ");
       Serial.println(UpdatedSleepTime);
@@ -96,9 +95,7 @@ void setup() {
       UpdatedSleepTime = 0;
       ESP.rtcUserMemoryWrite(64+sizeof(uint32_t), &UpdatedSleepTime, sizeof(uint32_t));
       ESP.deepSleep(FinalSleep);
-    } else {
-      continue;
-    }
+    } 
   }
 //----------------------------------------------------------------------------------------
   dht.begin();
@@ -175,17 +172,17 @@ void obtainMessage() {
 
 void sendMessage(){
   OffsetTime = abs(mesh.getNodeTime()-millis()*1000);
-  if (mesh.getNodeList().size()>0 ) {    
-    if (msg !=""){
-      if (exeOnceBroadcast) {
-        exeOnceBroadcast = false;
-        broadcastStartingTime = millis();
-      }
-      bool error = mesh.sendBroadcast(msg);
-      unsigned long currentTime = millis();
-      if (currentTime - broadcastStartingTime > broadcastTimeout) {
-        UpdatedSleepTime = SleepTime - OffsetTime + random(0,500000);
-        
+  Serial.println("OffsetTime");
+  Serial.println(OffsetTime);
+  
+  if (exeOnceBroadcast) {
+    exeOnceBroadcast = false;
+    broadcastStartingTime = millis();
+  }
+  unsigned long currentTime = millis();
+  if (currentTime - broadcastStartingTime > broadcastTimeout) {
+    UpdatedSleepTime = SleepTime - OffsetTime;
+    
         if (UpdatedSleepTime > SleepInterval){
           UpdatedSleepTime -= SleepInterval;
           ESP.rtcUserMemoryWrite(64+sizeof(uint32_t), &UpdatedSleepTime, sizeof(uint32_t));
@@ -196,24 +193,11 @@ void sendMessage(){
           ESP.rtcUserMemoryWrite(64+sizeof(uint32_t), &UpdatedSleepTime, sizeof(uint32_t));
           ESP.deepSleep(TempSleepInterval);
         }
-      }
+   }
+  if (mesh.getNodeList().size()>0 ) { 
+    if (msg !=""){
+      bool error = mesh.sendBroadcast(msg);
     Serial.printf("Sending message: %s\n", msg.c_str()); 
-    }
-  }else{
-    if (exeOnceConnection){
-      noConnectionStartTime = millis();
-      exeOnceConnection = false;
-    }
-    Serial.printf("No connection time: %.2f\n",(millis() - noConnectionStartTime)/1000.0);
-    Serial.printf("Current time: %.2f\n", millis()/1000.0);
-    if (millis() - noConnectionStartTime > noConnectionTimeout) {
-        UpdatedSleepTime = SleepTime-OffsetTime*1000+random(0,500000);
-        ESP.rtcUserMemoryWrite(64+sizeof(uint32_t), &UpdatedSleepTime, sizeof(uint32_t));
-        if (UpdatedSleepTime > SleepInterval){
-          ESP.deepSleep(SleepInterval);
-        }else{
-          ESP.deepSleep(UpdatedSleepTime);
-        }
     }
   }
 }
