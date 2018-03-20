@@ -97,7 +97,7 @@ void setup() {
       ESP.rtcUserMemoryWrite(64+sizeof(uint32_t), &UpdatedSleepTime, sizeof(uint32_t));
       ESP.deepSleep(FinalSleep);
     } else {
-      continue;
+      //
     }
   }
 //----------------------------------------------------------------------------------------
