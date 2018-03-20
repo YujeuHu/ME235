@@ -1,69 +1,69 @@
 //************************************************************
-//
 // 1. blinks led once for every node on the mesh
 // 2. blink cycle repeats every BLINK_PERIOD
 // 3. sends a message to every node on the mesh 
 // 4. prints anything it recieves to Serial.print
 // 5. extend sleep duration as specified
 // 6. averaging sensor reading to eliminate error
-// 7. 
-//
-//
 //************************************************************
+
 #include <painlessMesh.h>
 #include "DHT.h"
+#include "ArduinoJson.h"
 extern "C" {
   #include "user_interface.h"
 }
 
-// some gpio pin that is connected to an LED...
-// on my rig, this is 5, change to the right number of your LED.
-#define   LED1             D3       // GPIO number of connected LED, ON ESP-12 IS GPIO2
+#define   LED1             D3 
 #define   LED2             2
 #define DHTPIN 5
 #define DHTTYPE DHT11
 DHT dht(DHTPIN, DHTTYPE, 15);
 
-#define   BLINK_PERIOD    3000 // milliseconds until cycle repeat
+#define   BLINK_PERIOD    2000 // milliseconds until cycle repeat
 #define   BLINK_DURATION  100  // milliseconds LED is on for
 
 #define   MESH_SSID       "whateverYouLike"
 #define   MESH_PASSWORD   "somethingSneaky"
 #define   MESH_PORT       5555
 
-
-uint32_t timeHistory;
+//--------RTC Init------------
+uint32_t SleepInterval = 30*1000000;
 uint32_t initializer;
+uint32_t FinalSleep;
+uint32_t SleepTime = 20*1000000;
+uint32_t UpdatedSleepTime;
 
+//--------Flag Init-----------
 int SensorFlag = 1;
 int totaltemp = 0;
 int totalhumi = 0;
+int32_t offset = 0;
+int32_t OffsetTime = 0;
 bool exeOnceBroadcast = true;
+bool onFlag = false;
 unsigned long broadcastStartingTime = 0;
 unsigned long noConnectionStartTime = 0;
 bool exeOnceConnection = true;
 String msg="";
 
-// === Time Spec ===
-unsigned long broadcastTimeout = 20 * 1000;
-//unsigned long sleepInterval = 4294967295;
-unsigned long sleepInterval = 20 * 1000000;
-unsigned long noConnectionTimeout = 30 * 1000;
-unsigned long dT = 2*1000000;
-// === Time Spec ===
+//--------Time Spec----------
+unsigned long broadcastTimeout = 10 * 1000;//milli
+//unsigned long sleepInterval = 4294967295; //micro
+unsigned long noConnectionTimeout = 9 * 1000;//milli
 
+//--------Time Spec----------
 painlessMesh  mesh;
 bool calc_delay = false;
 SimpleList<uint32_t> nodes;
 
-void sendMessage() ; // Prototype
-void obtainMessage();
+//--------Task Init----------
+void sendMessage(); // Prototype
+void obtainMessage();// Prototype
+Task taskSendMessage( TASK_SECOND * 2, TASK_FOREVER, &sendMessage ); // start with a one second interval
+Task obtainSensorData(TASK_SECOND * 2, TASK_FOREVER, &obtainMessage);// obtain the reading from sensors
+Task blinkNoNodes;// Task to blink the number of nodes
 
-Task taskSendMessage( TASK_SECOND * 5, TASK_FOREVER, &sendMessage ); // start with a one second interval
-Task obtainSensorData(TASK_SECOND * 3, TASK_FOREVER, &obtainMessage);// obtain the reading from sensors
-// Task to blink the number of nodes
-Task blinkNoNodes;
-bool onFlag = false;
 
 void setup() {
   Serial.begin(115200);
@@ -71,26 +71,35 @@ void setup() {
   pinMode(5, INPUT);
   pinMode(LED2, OUTPUT);
   
+//--------------------Extend Sleep Time If > 71 Mins By Accessing RTC Memory---------------
   ESP.rtcUserMemoryRead(64, &initializer, sizeof(uint32_t));
-  ESP.rtcUserMemoryRead(64+sizeof(uint32_t), &timeHistory, sizeof(uint32_t));
+  ESP.rtcUserMemoryRead(64+sizeof(uint32_t), &UpdatedSleepTime, sizeof(uint32_t));
   Serial.println("Works Fine!");
   if (initializer != 123){
     Serial.println("first time");
     initializer = 123;
-    timeHistory=1;
+    UpdatedSleepTime = 0;
+    ESP.rtcUserMemoryWrite(64, &initializer, sizeof(uint32_t));
+    ESP.rtcUserMemoryWrite(64+sizeof(uint32_t), &UpdatedSleepTime, sizeof(uint32_t));
   }else{
-    timeHistory +=1;
-    Serial.print("rtc = ");
-    Serial.println(timeHistory);
+    UpdatedSleepTime = UpdatedSleepTime - SleepInterval;
+    if (UpdatedSleepTime >0){
+      if (UpdatedSleepTime/(SleepInterval) > 0){
+        Serial.print("Remaining Sleep Time: ");
+        Serial.println(UpdatedSleepTime);        
+        ESP.rtcUserMemoryWrite(64+sizeof(uint32_t), &UpdatedSleepTime, sizeof(uint32_t));
+        ESP.deepSleep(SleepInterval);
+      }else{
+        Serial.print("Remaining Sleep Time: ");
+        Serial.println(UpdatedSleepTime); 
+        FinalSleep = UpdatedSleepTime;
+        UpdatedSleepTime = 0;
+        ESP.rtcUserMemoryWrite(64+sizeof(uint32_t), &UpdatedSleepTime, sizeof(uint32_t));
+        ESP.deepSleep(FinalSleep);
+      }
+    }
   }
-  ESP.rtcUserMemoryWrite(64,&initializer,sizeof(uint32_t));
-  ESP.rtcUserMemoryWrite(64+sizeof(uint32_t), &timeHistory, sizeof(uint32_t));
-  if (timeHistory<5){
-    ESP.deepSleep(10*1000000);
-  }else{
-    timeHistory=0;
-    ESP.rtcUserMemoryWrite(64+sizeof(uint32_t),&timeHistory,sizeof(uint32_t));
-  }
+//----------------------------------------------------------------------------------------
   dht.begin();
   //mesh.setDebugMsgTypes( ERROR | MESH_STATUS | CONNECTION | SYNC | COMMUNICATION | GENERAL | MSG_TYPES | REMOTE ); // all types on
   //mesh.setDebugMsgTypes(ERROR | DEBUG | CONNECTION | COMMUNICATION);  // set before init() so that you can see startup messages
@@ -134,47 +143,37 @@ void setup() {
 }
 
 void loop() {
-
   mesh.update();
-//  int h = dht.readHumidity();
-//  int t = dht.readTemperature();
   digitalWrite(LED2, !onFlag);
-//    if (h <= 70){
-//     digitalWrite(LED1, LOW);
-//    // delay(3000)
-//    }else{
-//      digitalWrite(LED1, HIGH);
-//    }
-//    
 }
 
 void obtainMessage() {
   int h = dht.readHumidity();
   int t = dht.readTemperature();
-  totaltemp += t;
-  totalhumi += h;
+  totaltemp += random(10,30);
+  totalhumi += random(0,100);
   SensorFlag += 1;
-  if (SensorFlag > 5){
-    if ((totaltemp/5 > 1000 )||( totalhumi/5 >1000)) {
+  if (SensorFlag == 3){
+    if ((totaltemp/3 > 1000 )||( totalhumi/3 >1000)) {
       msg += "NaN";
     }else{
       msg += "Test ";
       msg += mesh.getNodeId();
       msg += " Temperature: ";
-      msg += String(floor(totaltemp/5));
+      msg += String(floor(totaltemp/3));
       msg += "Humidity: ";
-      msg += String(floor(totalhumi/5));
+      msg += String(floor(totalhumi/3));
       msg += " myFreeMemory: " + String(ESP.getFreeHeap());
       msg += " noTasks: " + String(mesh.scheduler.size());  
     }
     SensorFlag =0;
   }
-  obtainSensorData.setInterval(TASK_SECOND * 3);
+  obtainSensorData.setInterval(TASK_SECOND * 2);
 }
 
 
 void sendMessage(){
-
+  OffsetTime = abs(mesh.getNodeTime()-millis()*1000);
   if (mesh.getNodeList().size()>0 ) {    
     if (msg !=""){
       if (exeOnceBroadcast) {
@@ -184,16 +183,14 @@ void sendMessage(){
       bool error = mesh.sendBroadcast(msg);
       unsigned long currentTime = millis();
       if (currentTime - broadcastStartingTime > broadcastTimeout) {
-        ESP.deepSleep(sleepInterval);
-      } // broadcst timeout
-  //    if (calc_delay) {
-  //      SimpleList<uint32_t>::iterator node = nodes.begin();
-  //      while (node != nodes.end()) {
-  //        mesh.startDelayMeas(*node);
-  //        node++;
-  //      }
-  //      calc_delay = false;
-  //    }
+        UpdatedSleepTime = SleepTime-OffsetTime*1000+random(0,500000);
+        ESP.rtcUserMemoryWrite(64+sizeof(uint32_t), &UpdatedSleepTime, sizeof(uint32_t));
+        if (UpdatedSleepTime > SleepInterval){
+          ESP.deepSleep(SleepInterval);
+        }else{
+          ESP.deepSleep(UpdatedSleepTime);
+        }
+      }
     Serial.printf("Sending message: %s\n", msg.c_str()); 
     }
   }else{
@@ -204,7 +201,13 @@ void sendMessage(){
     Serial.printf("No connection time: %.2f\n",(millis() - noConnectionStartTime)/1000.0);
     Serial.printf("Current time: %.2f\n", millis()/1000.0);
     if (millis() - noConnectionStartTime > noConnectionTimeout) {
-    ESP.deepSleep(sleepInterval - dT);
+        UpdatedSleepTime = SleepTime-OffsetTime*1000+random(0,500000);
+        ESP.rtcUserMemoryWrite(64+sizeof(uint32_t), &UpdatedSleepTime, sizeof(uint32_t));
+        if (UpdatedSleepTime > SleepInterval){
+          ESP.deepSleep(SleepInterval);
+        }else{
+          ESP.deepSleep(UpdatedSleepTime);
+        }
     }
   }
 }
