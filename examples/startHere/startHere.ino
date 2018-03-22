@@ -35,9 +35,11 @@ uint32_t SleepTime = 20*1000000;
 uint32_t UpdatedSleepTime;
 
 //--------Flag Init-----------
-int SensorFlag = 1;
-int totaltemp = 0;
-int totalhumi = 0;
+int8_t SensorFlag = 1;
+int8_t totaltemp = 0;
+int8_t totalhumi = 0;
+
+uint8_t SensorDataSize = 3;
 int32_t offset = 0;
 int32_t OffsetTime = 0;
 bool exeOnceBroadcast = true;
@@ -64,12 +66,18 @@ Task taskSendMessage( TASK_SECOND * 2, TASK_FOREVER, &sendMessage ); // start wi
 Task obtainSensorData(TASK_SECOND * 2, TASK_FOREVER, &obtainMessage);// obtain the reading from sensors
 Task blinkNoNodes;// Task to blink the number of nodes
 
+// ----- JSON Init ------
+DynamicJsonBuffer jsonBuffer;
+JsonObject& Root = jsonBuffer.createObject();
 
 void setup() {
   Serial.begin(115200);
   pinMode(LED1, OUTPUT);
   pinMode(5, INPUT);
   pinMode(LED2, OUTPUT);
+
+  
+
   
 //--------------------Extend Sleep Time If > 71 Mins By Accessing RTC Memory---------------
   ESP.rtcUserMemoryRead(64, &initializer, sizeof(uint32_t));
@@ -137,7 +145,7 @@ void setup() {
   mesh.scheduler.addTask(blinkNoNodes);
   blinkNoNodes.enable();
 
-  randomSeed(analogRead(A0));
+//  randomSeed(analogRead(A0));
 }
 
 void loop() {
@@ -146,25 +154,38 @@ void loop() {
 }
 
 void obtainMessage() {
+  
   int h = dht.readHumidity();
   int t = dht.readTemperature();
   totaltemp += random(10,30);
   totalhumi += random(0,100);
   SensorFlag += 1;
-  if (SensorFlag == 3){
-    if ((totaltemp/3 > 1000 )||( totalhumi/3 >1000)) {
-      msg += "NaN";
+
+  if (SensorFlag == SensorDataSize){
+    if ((totaltemp/SensorDataSize > 1000 )||( totalhumi/SensorDataSize >1000)) {
+      Root["DeviceID"] = mesh.getNodeId();
+      Root["Temp"] = -127;
+      Root["Humi"] = -127;
+      Root["MemoryFree"] = ESP.getFreeHeap();
+      Root["Task"] = mesh.scheduler.size();
+//      msg = "CNM";
     }else{
-      msg += "Test ";
-      msg += mesh.getNodeId();
-      msg += " Temperature: ";
-      msg += String(floor(totaltemp/3));
-      msg += "Humidity: ";
-      msg += String(floor(totalhumi/3));
-      msg += " myFreeMemory: " + String(ESP.getFreeHeap());
-      msg += " noTasks: " + String(mesh.scheduler.size());  
+      Root["DeviceID"] = mesh.getNodeId();
+      Root["Temp"] = totaltemp/3;
+      Root["Humi"] = totalhumi/3;
+      Root["MemoryFree"] = ESP.getFreeHeap();
+      Root["Task"] = mesh.scheduler.size();
+//      msg = "MNC";
+//      msg += "Test ";
+//      msg += mesh.getNodeId();
+//      msg += " Temperature: ";
+//      msg += String(floor(totaltemp/3));
+//      msg += "Humidity: ";
+//      msg += String(floor(totalhumi/3));
+//      msg += " myFreeMemory: " + String(ESP.getFreeHeap());
+//      msg += " noTasks: " + String(mesh.scheduler.size());  
     }
-    SensorFlag =0;
+    Root.printTo(msg);
   }
   obtainSensorData.setInterval(TASK_SECOND * 2);
 }
@@ -195,16 +216,27 @@ void sendMessage(){
         }
    }
   if (mesh.getNodeList().size()>0 ) { 
-    if (msg !=""){
-      bool error = mesh.sendBroadcast(msg);
-    Serial.printf("Sending message: %s\n", msg.c_str()); 
+    if (msg != ""){
+      bool error = mesh.sendBroadcast(msg,false);
+//      if (calc_delay) {
+//        SimpleList<uint32_t>::iterator node = nodes.begin();
+//        while (node != nodes.end()) {
+//          mesh.startDelayMeas(*node);
+//          node++;
+//        }
+//        calc_delay = false;
+//      }
+      Serial.printf("Sending message: %s\n", msg.c_str()); 
+//    Serial.println("Sending message:");
+//      Root.prettyPrintTo(Serial);
     }
   }
+  taskSendMessage.setInterval(TASK_SECOND*2);
 }
 
 //=====================buildin tasks to keep mesh network================
 void receivedCallback(uint32_t from, String & msg) {
-  Serial.printf("startHere: Received from %u msg=%s\n", from, msg.c_str());
+  Serial.printf("Received from %u msg=%s\n", from, msg.c_str());
 }
 
 void newConnectionCallback(uint32_t nodeId) {
