@@ -75,6 +75,7 @@ void setup() {
   pinMode(LED1, OUTPUT);
   pinMode(5, INPUT);
   pinMode(LED2, OUTPUT);
+  randomSeed(analogRead(A0));
 
   
 
@@ -149,16 +150,17 @@ void setup() {
 }
 
 void loop() {
+  
   mesh.update();
   digitalWrite(LED2, !onFlag);
 }
 
 void obtainMessage() {
-  
+  randomSeed(A0);
   int h = dht.readHumidity();
   int t = dht.readTemperature();
-  totaltemp += random(10,30);
-  totalhumi += random(0,100);
+  totaltemp += random(30);
+  totalhumi += random(100);
   SensorFlag += 1;
 
   if (SensorFlag == SensorDataSize){
@@ -166,15 +168,16 @@ void obtainMessage() {
       Root["DeviceID"] = mesh.getNodeId();
       Root["Temp"] = -127;
       Root["Humi"] = -127;
-      Root["MemoryFree"] = ESP.getFreeHeap();
-      Root["Task"] = mesh.scheduler.size();
+//      Root["MemoryFree"] = ESP.getFreeHeap();
+//      Root["Task"] = mesh.scheduler.size();
 //      msg = "CNM";
     }else{
       Root["DeviceID"] = mesh.getNodeId();
       Root["Temp"] = totaltemp/3;
       Root["Humi"] = totalhumi/3;
-      Root["MemoryFree"] = ESP.getFreeHeap();
-      Root["Task"] = mesh.scheduler.size();
+//      Root["MemoryFree"] = ESP.getFreeHeap();
+//      Root["Task"] = mesh.scheduler.size();
+
 //      msg = "MNC";
 //      msg += "Test ";
 //      msg += mesh.getNodeId();
