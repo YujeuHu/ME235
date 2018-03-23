@@ -5,12 +5,20 @@ void setup() {
   Serial.begin(9600);
   StaticJsonBuffer<200> jsonBuffer;
   StaticJsonBuffer<200> anotherJsonBuffer;
+  DynamicJsonBuffer restoreJsonBuffer;
 
   JsonObject& anotherRoot = anotherJsonBuffer.createObject();
   anotherRoot["anotherSensor"] = "TempSensor";
   anotherRoot["TempData"] = 12;
-  // anotherRoot.prettyPrintTo(Serial);
-  Serial.println();
+  String anotherRootString;
+  anotherRoot.printTo(anotherRootString);
+  Serial.println("String from Object:");
+  Serial.println(anotherRootString);
+
+  JsonObject& anotherRootRestored = restoreJsonBuffer.parseObject(anotherRootString);
+
+  Serial.println("Object from String:");
+  anotherRootRestored.prettyPrintTo(Serial);
 
   JsonObject& root = jsonBuffer.createObject();
 
@@ -22,8 +30,8 @@ void setup() {
   // root.prettyPrintTo(Serial);
   Serial.println();
   // mergeJSON(root, anotherRoot, "WTF");
-  mergeJSON(anotherRoot, root, "WTF");
-  anotherRoot.prettyPrintTo(Serial);
+  mergeJSON(anotherRootRestored, root, "WTF");
+  anotherRootRestored.prettyPrintTo(Serial);
   Serial.println();
 }
 
@@ -42,6 +50,8 @@ void mergeJSON(JsonObject& destination, JsonObject& source, String nameofSource)
     }
   }
 }
+
+
 
   // root.prettyPrintTo(Serial);
 void loop() {
