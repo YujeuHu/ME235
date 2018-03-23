@@ -46,7 +46,7 @@ void mergeJSON(JsonObject& destination, JsonObject& source, String nameofSource)
     } else if (it->value.is<double>()){
       src[it->key] = it->value.as<double>();
     } else if (it->value.is<JsonArray>()){
-    src[it->key] = it->value.as<JsonArray>();
+      src[it->key] = it->value.as<JsonArray>();
     }
   }
 }

@@ -1,22 +1,22 @@
 #include "RedundantCheck.h"
 
-RedundantChecker() {
-    this.history[0] = 0;
+RedundantChecker::RedundantChecker() {
+    history[0] = 0;
 }
 
-bool reset() {
+bool RedundantChecker::reset() {
     int cunt = sizeof(history) / sizeof(history[0]);
     for (int i = 0; i < cunt; i++){
-        this.history[i] = 0;
+        history[i] = 0;
     }    
-    return this.history[0] == 0;
+    return history[0] == 0;
 }
 
-bool check(String msg) {
+bool RedundantChecker::check(String msg) {
     DynamicJsonBuffer restoreJsonBuffer;
     JsonObject& JSONRestored = restoreJsonBuffer.parseObject(msg);
 
-    if (this.history[0] == 0) { //First call
+    if (history[0] == 0) { //First call
         history[0] = JSONRestored["DeviceID"];
         return false;
     } else { // History contains sth
