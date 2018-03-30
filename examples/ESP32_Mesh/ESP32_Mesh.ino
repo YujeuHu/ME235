@@ -6,6 +6,8 @@
 //
 //************************************************************
 #include <painlessMesh.h>
+#include <ArduinoJson.h>
+#include "RedundantCheck.h"
 
 //-------------Lora------------------------
 #include <SPI.h>
@@ -28,8 +30,7 @@
 #define RST     14   // GPIO14 -- SX1278's RESET
 #define DI0     26   // GPIO26 -- SX1278's IRQ(Interrupt Request)
 #define BAND    868E6
-//----------------------------------------------------
-String xinxi="";
+
 //-------------Lora------------------------
 unsigned int counter = 0;
 
@@ -37,10 +38,24 @@ SSD1306 display(0x3c, 4, 15);
 String rssi = "RSSI --";
 String packSize = "--";
 String packet ;
+int airtemp;
+int airhumi;
+int msgsize = 0;
+String totalDataString;
+
+StaticJsonBuffer<256> totalBuffer;
+DynamicJsonBuffer restoreJsonBuffer;
+
+JsonObject& totalData = totalBuffer.createObject();
+
+bool airDataFlag = 0;
 //---------------------------------------------
 
 painlessMesh  mesh;
 SimpleList<uint32_t> nodes;
+
+RedundantChecker checker;
+
 
 void setup() {
 // ---------------Lora-------------------
@@ -66,6 +81,7 @@ void setup() {
   display.init();
   display.flipScreenVertically();  
   display.setFont(ArialMT_Plain_10);
+  randomSeed(analogRead(0));
 //  --------------------------------------------
   
   //mesh.setDebugMsgTypes( ERROR | MESH_STATUS | CONNECTION | SYNC | COMMUNICATION | GENERAL | MSG_TYPES | REMOTE ); // all types on
@@ -83,34 +99,61 @@ void setup() {
 void loop() {
   mesh.update();
 }
+//------------------------ MergeJSON ---------------------------
+void mergeJSON(JsonObject& destination, JsonObject& source, String nameofSource) {
+  JsonObject& src = destination.createNestedObject(nameofSource);
+  for (JsonObject::iterator it=source.begin(); it!=source.end(); ++it) {
+    
+    if (it->value.is<char*>()){
+      src[it->key] = it->value.as<String>();
+    } else if (it->value.is<int>()) {
+      src[it->key] = it->value.as<int>();
+    } else if (it->value.is<double>()){
+      src[it->key] = it->value.as<double>();
+    } else if (it->value.is<JsonArray>()){
+    src[it->key] = it->value.as<JsonArray>();
+    }
+  }
+}
+//-----------------------------------------------------------------
 
 //=====================buildin tasks to keep mesh network================
 void receivedCallback(uint32_t from, String & msg) {
-  Serial.printf("startHere: Received from %u msg=%s\n", from, msg.c_str());
-  xinxi = msg.c_str();
-  airtemp = random(30);
-  airhumi = random(100);
+  Serial.printf("Received from %u msg=%s\n", from, msg.c_str());
+  if (airDataFlag == 0){
+    airDataFlag = 1;
+    airtemp = random(30);
+    airhumi = random(100);
+    totalData["DeviceID"] = mesh.getNodeId();
+    totalData["airtemp"] = airtemp;
+    totalData["airhumi"] = airhumi;
+  }
+  bool isRedundant = checker.check( msg );
+  if (!isRedundant){
+    JsonObject& otherData = restoreJsonBuffer.parseObject(msg);
+    mergeJSON(totalData, otherData,"LoRa1" );
+    msgsize++;
+  }
+  if (msgsize > 1){
+    totalData.printTo(totalDataString);
+    airDataFlag == 0;
+    msgsize=0;
+    Serial.println(totalDataString);
+    
+    display.clear();
+    display.setTextAlignment(TEXT_ALIGN_LEFT);
+    display.setFont(ArialMT_Plain_10);
   
-  
-  display.clear();
-  display.setTextAlignment(TEXT_ALIGN_LEFT);
-  display.setFont(ArialMT_Plain_10);
-  
-  display.drawString(0, 0, "Sending packet: ");
-  display.drawString(90, 0, String(counter));
-  display.display();
-
-  // send packet
-  LoRa.beginPacket();
-  LoRa.print(xinxi);
-  LoRa.print(counter);
-  LoRa.endPacket();
-
-  counter++;
-  digitalWrite(25, HIGH);   // turn the LED on (HIGH is the voltage level)
-  delay(1000);                       // wait for a second
-  digitalWrite(25, LOW);    // turn the LED off by making the voltage LOW
-  delay(1000);                       // wait for a second
+    display.drawString(0, 0, "Sending packet: ");
+    display.drawString(90, 0, String(counter));
+    display.display();
+    // send packet
+    LoRa.beginPacket();
+    LoRa.print(totalDataString);
+    LoRa.print(counter);
+    LoRa.endPacket();
+    counter++;
+  }
 }
 
 void newConnectionCallback(uint32_t nodeId) {
