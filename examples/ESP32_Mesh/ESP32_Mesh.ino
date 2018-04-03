@@ -86,7 +86,7 @@ void setup() {
   
   //mesh.setDebugMsgTypes( ERROR | MESH_STATUS | CONNECTION | SYNC | COMMUNICATION | GENERAL | MSG_TYPES | REMOTE ); // all types on
   //mesh.setDebugMsgTypes(ERROR | DEBUG | CONNECTION | COMMUNICATION);  // set before init() so that you can see startup messages
-  mesh.setDebugMsgTypes(ERROR | DEBUG | CONNECTION);  // set before init() so that you can see startup messages
+  // mesh.setDebugMsgTypes(ERROR);  // set before init() so that you can see startup messages
 
   mesh.init(MESH_SSID, MESH_PASSWORD, MESH_PORT);
   mesh.onReceive(&receivedCallback);
@@ -98,6 +98,11 @@ void setup() {
 
 void loop() {
   mesh.update();
+  if ((nodes.size() < 1) && (millis() > 15000)){
+    Serial.println("Current Millis:");
+    Serial.println(millis());
+    ESP.deepSleep(20e6);
+  }
 }
 //------------------------ MergeJSON ---------------------------
 void mergeJSON(JsonObject& destination, JsonObject& source, String nameofSource) {
@@ -107,7 +112,7 @@ void mergeJSON(JsonObject& destination, JsonObject& source, String nameofSource)
     if (it->value.is<char*>()){
       src[it->key] = it->value.as<String>();
     } else if (it->value.is<int>()) {
-      src[it->key] = it->value.as<int>();
+      src[it->key] = it->value.as<uint32_t>();
     } else if (it->value.is<double>()){
       src[it->key] = it->value.as<double>();
     } else if (it->value.is<JsonArray>()){
@@ -119,7 +124,7 @@ void mergeJSON(JsonObject& destination, JsonObject& source, String nameofSource)
 
 //=====================buildin tasks to keep mesh network================
 void receivedCallback(uint32_t from, String & msg) {
-  Serial.printf("Received from %u msg=%s\n", from, msg.c_str());
+  // Serial.printf("Received from %u msg=%s\n", from, msg.c_str());
   if (airDataFlag == 0){
     airDataFlag = 1;
     airtemp = random(30);
@@ -130,15 +135,22 @@ void receivedCallback(uint32_t from, String & msg) {
   }
   bool isRedundant = checker.check( msg );
   if (!isRedundant){
+    Serial.println("--------------------");
+    Serial.println("No Redundancy Found!");
+    Serial.println("--------------------");
     JsonObject& otherData = restoreJsonBuffer.parseObject(msg);
-    mergeJSON(totalData, otherData,"LoRa1" );
+    Serial.println("Other Data:");
+    otherData.prettyPrintTo(Serial);
+    //String deviceName = "Sensor " + String(msgsize);
+    mergeJSON(totalData, otherData,String(msgsize));
     msgsize++;
+    Serial.println("Total Data:");
+    totalData.prettyPrintTo(Serial);
   }
-  if (msgsize > 1){
-    totalData.printTo(totalDataString);
-    airDataFlag == 0;
-    msgsize=0;
-    Serial.println(totalDataString);
+  if (msgsize > 0){
+    
+    //airDataFlag == 0;
+    //msgsize=0;
     
     display.clear();
     display.setTextAlignment(TEXT_ALIGN_LEFT);
@@ -152,6 +164,7 @@ void receivedCallback(uint32_t from, String & msg) {
     LoRa.print(totalDataString);
     LoRa.print(counter);
     LoRa.endPacket();
+    //pkgCreated = true;
     counter++;
   }
 }
@@ -184,6 +197,8 @@ void changedConnectionCallback() {
   }
   Serial.println();
   //calc_delay = true;
+
+  
 }
 
 void nodeTimeAdjustedCallback(int32_t offset) {
