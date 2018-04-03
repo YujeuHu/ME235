@@ -36,8 +36,8 @@ uint32_t UpdatedSleepTime;
 
 //--------Flag Init-----------
 int8_t SensorFlag = 1;
-int8_t totaltemp = 0;
-int8_t totalhumi = 0;
+int totaltemp = 0;
+int totalhumi = 0;
 
 uint8_t SensorDataSize = 3;
 int32_t offset = 0;
@@ -146,7 +146,6 @@ void setup() {
   mesh.scheduler.addTask(blinkNoNodes);
   blinkNoNodes.enable();
 
-//  randomSeed(analogRead(A0));
 }
 
 void loop() {
@@ -156,11 +155,11 @@ void loop() {
 }
 
 void obtainMessage() {
-  randomSeed(A0);
+
   int h = dht.readHumidity();
   int t = dht.readTemperature();
-  totaltemp += random(30);
-  totalhumi += random(100);
+  totaltemp += random(0,30);
+  totalhumi += random(0,100);
   SensorFlag += 1;
 
   if (SensorFlag == SensorDataSize){
@@ -173,8 +172,8 @@ void obtainMessage() {
 //      msg = "CNM";
     }else{
       Root["DeviceID"] = mesh.getNodeId();
-      Root["Temp"] = totaltemp/3;
-      Root["Humi"] = totalhumi/3;
+      Root["Temp"] = totaltemp/3.0;
+      Root["Humi"] = totalhumi/3.0;
 //      Root["MemoryFree"] = ESP.getFreeHeap();
 //      Root["Task"] = mesh.scheduler.size();
 
@@ -190,7 +189,7 @@ void obtainMessage() {
     }
     Root.printTo(msg);
   }
-  obtainSensorData.setInterval(TASK_SECOND * 2);
+  obtainSensorData.setInterval(TASK_SECOND * 3);
 }
 
 
@@ -205,7 +204,10 @@ void sendMessage(){
   }
   unsigned long currentTime = millis();
   if (currentTime - broadcastStartingTime > broadcastTimeout) {
-    UpdatedSleepTime = SleepTime - OffsetTime;
+    UpdatedSleepTime = SleepTime - OffsetTime-random(-500000,500000);
+    if (UpdatedSleepTime > 3660000000){
+      UpdatedSleepTime = 1;
+    }
     
         if (UpdatedSleepTime > SleepInterval){
           UpdatedSleepTime -= SleepInterval;
