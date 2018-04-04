@@ -7,9 +7,11 @@ sleepTimer::sleepTimer() {
 void sleepTimer::setSleepTime(uint64_t timeToSleep) {
     this->convertMusToHrAndRemainingMus(timeToSleep,
                                         this -> updatedSleepTimeInHr,
-                                        this -> updatedSleepTimeInUs);
+                                        this -> updatedSleepTimeInMus);
 
     this->writeTimeRec();
+
+}
 
 void sleepTimer::startSleeping() {
     this -> readTimeRec(); // Filling both updatedSleepTimeInMus and updatedSleepTimeInHr
