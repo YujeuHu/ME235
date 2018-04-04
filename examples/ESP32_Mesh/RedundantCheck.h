@@ -7,6 +7,7 @@ class RedundantChecker {
     bool check(String msg);
     bool check(String msg, unit16_t &prevLength);
     bool reset();
+    bool reset(String msg);
 
     private:
     int history[MAX_NUM_OF_CLIENT][2];

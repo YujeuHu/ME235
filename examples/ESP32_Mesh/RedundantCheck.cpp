@@ -1,17 +1,32 @@
 #include "RedundantCheck.h"
 
 RedundantChecker::RedundantChecker() {
-    history[0] = 0;
+    history[0][0] = 0;
     numOfRecord = 0;
 }
 
 bool RedundantChecker::reset() {
-    int cunt = sizeof(history) / sizeof(history[0]);
+    int cunt = sizeof(history) / (sizeof(history[0][0]) * 2);
     for (int i = 0; i < cunt; i++){
-        history[i] = 0;
+        history[i][0] = 0;
+        history[i][1] = 0;
     }    
     numOfRecord = 0;
-    return history[0] == 0;
+    return history[0][0] == 0;
+}
+
+bool RedundantChecker::reset(String msg) {
+    int cunt = sizeof(history) / (sizeof(history[0][0]) * 2);
+    DynamicJsonBuffer restoreJsonBuffer;
+    JsonObject& JSONRestored = restoreJsonBuffer.parseObject(msg);
+    for (int i = 0; i < cunt; i++){
+        if (history[i][0] == JSONRestored["DeviceID"]) {
+            history[i][0] = 0;
+            history[i][1] = 0;
+            return true;
+        }
+    }
+    return false;
 }
 
 bool RedundantChecker::check(String msg) {
@@ -25,12 +40,12 @@ bool RedundantChecker::check(String msg) {
     } else { // History contains sth
         int cunt = sizeof(history) / (sizeof(history[0][0]) * 2);
         for (int i = 0; i < cunt; i++) { // treaverse the entire array to find same ID
-            if (history[i] == JSONRestored["DeviceID"]) { // Redundant ID found
+            if (history[i][0] == JSONRestored["DeviceID"]) { // Redundant ID found
                 return true;
             }
         }
         numOfRecord ++; // No Redundancy Found
-        history[numOfRecord] = JSONRestored["DeviceID"];
+        history[numOfRecord][0] = JSONRestored["DeviceID"];
         return false;
     }
 
