@@ -230,6 +230,7 @@ void receivedCallback(uint32_t from, String & msg) {
     msgsize++;
     Serial.println("Total Data:");
     totalData.prettyPrintTo(Serial);
+    titalData.printTo(totalDataString);    
   }
   if (msgsize > 0){
     
