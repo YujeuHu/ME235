@@ -16,5 +16,5 @@ class sleepTimer {
     void convertMusToHrAndRemainingMus(uint64_t timeInMus, uint32_t &timeInHr, uint32_t &timeInRemainingMus);
     uint32_t updatedSleepTimeInMus; // the portion of sleep time less than an hour in mu s
     uint32_t updatedSleepTimeInHr; // the portion of sleep time in hours
-    bool sleepTimeLessThan1Hr;
-}
+    // bool sleepTimeLessThan1Hr;
+};

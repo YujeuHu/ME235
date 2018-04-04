@@ -17,6 +17,12 @@ void sleepTimer::startSleeping() {
         // Doing nothing...
     //    return
     // }
+    uint32_t init;
+    ESP.rtcUserMemoryRead(64 + 2 * sizeof(uint32_t), &init, sizeof(uint32_t));
+    if (init != 123) { // Fist call after power ON
+        ESP.rtcUserMemoryWrite(64 + 2 * sizeof(uint32_t), 123, sizeof(uint32_t));
+        return;
+    }
 
     if (updatedSleepTimeInHr > 0) {
         updatedSleepTimeInHr -= 1;
