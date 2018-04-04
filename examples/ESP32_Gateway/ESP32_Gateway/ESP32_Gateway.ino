@@ -24,6 +24,11 @@ SSD1306  display(0x3c, 4, 15);
 #define DI0     26
 #define BAND    868E6
 
+int counter = 0;
+uint16_t msgMaxLength = 0;
+uint16_t prevLength;
+
+
 
 void setup() {
   pinMode(16,OUTPUT);
@@ -64,15 +69,15 @@ void loop() {
 
     // read packet
     while (LoRa.available()) {
-    String msg = LoRa.readString();
-    uint16_t msgLength;
-    bool isRedundant = checker.check(msg);
-    if (!isRedundant){
-      
-    }
-    
-    Serial.println(msg);
-
+      String msg = LoRa.readString();
+      bool isRedundant = checker.check(msg,prevLength);
+      if(isRedundant){
+        if((msg.length() - prevLength) = 0){//msg is ready to send
+          Serial.println(msg);
+        }else if ((msg.length() - prevLength) < 0){
+          checker.reset(msg);
+        }  
+      }
     }
   }
 }
