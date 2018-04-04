@@ -9,4 +9,5 @@ class RedundantChecker {
 
     private:
     int history[5];
+    int numOfRecord;
 };

@@ -10,9 +10,9 @@
 #include <painlessMesh.h>
 #include "DHT.h"
 #include "ArduinoJson.h"
-extern "C" {
-  #include "user_interface.h"
-}
+#include "sleepTimer.h"
+
+sleepTimer Timer;
 
 #define   LED1             D3 
 #define   LED2             2
@@ -28,11 +28,8 @@ DHT dht(DHTPIN, DHTTYPE, 15);
 #define   MESH_PORT       5555
 
 //--------RTC Init------------
-uint32_t SleepInterval = 30*1000000;
-uint32_t initializer;
-uint32_t FinalSleep;
-uint32_t SleepTime = 20*1000000;
-uint32_t UpdatedSleepTime;
+uint64_t SleepTime = 20*1000000;
+uint64_t UpdatedSleepTime;
 
 //--------Flag Init-----------
 int8_t SensorFlag = 1;
@@ -41,7 +38,7 @@ int totalhumi = 0;
 
 uint8_t SensorDataSize = 3;
 int32_t offset = 0;
-int32_t OffsetTime = 0;
+uint64_t OffsetTime = 0;
 bool exeOnceBroadcast = true;
 bool onFlag = false;
 unsigned long broadcastStartingTime = 0;
@@ -81,31 +78,7 @@ void setup() {
 
   
 //--------------------Extend Sleep Time If > 71 Mins By Accessing RTC Memory---------------
-  ESP.rtcUserMemoryRead(64, &initializer, sizeof(uint32_t));
-  ESP.rtcUserMemoryRead(64+sizeof(uint32_t), &UpdatedSleepTime, sizeof(uint32_t));
-  Serial.println("Works Fine!");
-  if (initializer != 123){
-    Serial.println("first time");
-    initializer = 123;
-    UpdatedSleepTime = 0;
-    ESP.rtcUserMemoryWrite(64, &initializer, sizeof(uint32_t));
-    ESP.rtcUserMemoryWrite(64+sizeof(uint32_t), &UpdatedSleepTime, sizeof(uint32_t));
-  }else{
-    if (UpdatedSleepTime > SleepInterval){
-      Serial.print("Remaining Sleep Time: ");
-      Serial.println(UpdatedSleepTime);
-      UpdatedSleepTime -= SleepInterval;
-      ESP.rtcUserMemoryWrite(64+sizeof(uint32_t), &UpdatedSleepTime, sizeof(uint32_t));
-      ESP.deepSleep(SleepInterval);
-    } else if (UpdatedSleepTime > 0){
-      Serial.print("Remaining Sleep Time: ");
-      Serial.println(UpdatedSleepTime); 
-      FinalSleep = UpdatedSleepTime;
-      UpdatedSleepTime = 0;
-      ESP.rtcUserMemoryWrite(64+sizeof(uint32_t), &UpdatedSleepTime, sizeof(uint32_t));
-      ESP.deepSleep(FinalSleep);
-    } 
-  }
+Timer.startSleeping();
 //----------------------------------------------------------------------------------------
   dht.begin();
   //mesh.setDebugMsgTypes( ERROR | MESH_STATUS | CONNECTION | SYNC | COMMUNICATION | GENERAL | MSG_TYPES | REMOTE ); // all types on
@@ -194,9 +167,9 @@ void obtainMessage() {
 
 
 void sendMessage(){
-  OffsetTime = abs(mesh.getNodeTime()-millis()*1000);
+  OffsetTime = abs((uint64_t)mesh.getNodeTime()-millis()*1000);
   Serial.println("OffsetTime");
-  Serial.println(OffsetTime);
+  Serial.println((uint32_t)OffsetTime);
   
   if (exeOnceBroadcast) {
     exeOnceBroadcast = false;
@@ -209,16 +182,9 @@ void sendMessage(){
       UpdatedSleepTime = 1;
     }
     
-        if (UpdatedSleepTime > SleepInterval){
-          UpdatedSleepTime -= SleepInterval;
-          ESP.rtcUserMemoryWrite(64+sizeof(uint32_t), &UpdatedSleepTime, sizeof(uint32_t));
-          ESP.deepSleep(SleepInterval);
-        }else{
-          uint32_t TempSleepInterval = UpdatedSleepTime;
-          UpdatedSleepTime = 0;
-          ESP.rtcUserMemoryWrite(64+sizeof(uint32_t), &UpdatedSleepTime, sizeof(uint32_t));
-          ESP.deepSleep(TempSleepInterval);
-        }
+    Timer.setSleepTime((uint64_t)UpdatedSleepTime);
+    
+    Timer.startSleeping();
    }
   if (mesh.getNodeList().size()>0 ) { 
     if (msg != ""){

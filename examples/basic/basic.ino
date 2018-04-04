@@ -7,10 +7,14 @@
 //
 //************************************************************
 #include "painlessMesh.h"
+#include "sleepTimer.h"
+
 
 #define   MESH_PREFIX     "Test"
 #define   MESH_PASSWORD   "justatry"
 #define   MESH_PORT       5555
+
+
 
 void sendMessage() ; // Prototype so PlatformIO doesn't complain
 
@@ -34,10 +38,15 @@ void nodeTimeAdjustedCallback(int32_t offset) {
 }
 
 void setup() {
+  sleepTimer sT;
   Serial.begin(115200);
 
+  Serial.println(String(sT.result));
+
+  sT.sleepTest();
+
 //mesh.setDebugMsgTypes( ERROR | MESH_STATUS | CONNECTION | SYNC | COMMUNICATION | GENERAL | MSG_TYPES | REMOTE ); // all types on
-  mesh.setDebugMsgTypes( ERROR | STARTUP );  // set before init() so that you can see startup messages
+//  mesh.setDebugMsgTypes( ERROR | STARTUP );  // set before init() so that you can see startup messages
 
   mesh.init( MESH_PREFIX, MESH_PASSWORD, MESH_PORT );
   mesh.onReceive(&receivedCallback);

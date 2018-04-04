@@ -9,6 +9,7 @@
 #include <ArduinoJson.h>
 #include "RedundantCheck.h"
 
+
 //-------------Lora------------------------
 #include <SPI.h>
 #include <LoRa.h>
@@ -17,6 +18,10 @@
 //#include "images.h"
 //-------------------------------------------------
 
+//#define   LED1             D3 
+#define   LED2             2
+#define   BLINK_PERIOD    2000 // milliseconds until cycle repeat
+#define   BLINK_DURATION  100  // milliseconds LED is on for
 
 #define   MESH_SSID       "whateverYouLike"
 #define   MESH_PASSWORD   "somethingSneaky"
@@ -43,7 +48,31 @@ int airhumi;
 int msgsize = 0;
 String totalDataString;
 
-StaticJsonBuffer<256> totalBuffer;
+//--------RTC Init------------
+uint32_t SleepInterval = 30*1000000;
+uint32_t SleepTime = 20*1000000;
+uint32_t UpdatedSleepTime;
+
+//--------Flag Init-----------
+int32_t OffsetTime = 0;
+bool exeOnceBroadcast = true;
+bool onFlag = false;
+unsigned long broadcastStartingTime = 0;
+unsigned long noConnectionStartTime = 0;
+bool exeOnceConnection = true;
+bool sendingFlag = false;
+String msg="";
+
+//--------Time Spec----------
+unsigned long broadcastTimeout = 20 * 1000;//milli
+//unsigned long sleepInterval = 4294967295; //micro
+unsigned long noConnectionTimeout = 9 * 1000;//milli
+
+void sendMessage();
+Task taskSendMessage( TASK_SECOND * 2, TASK_FOREVER, &sendMessage ); // start with a one second interval
+
+  
+StaticJsonBuffer<512> totalBuffer;
 DynamicJsonBuffer restoreJsonBuffer;
 
 JsonObject& totalData = totalBuffer.createObject();
@@ -52,9 +81,12 @@ bool airDataFlag = 0;
 //---------------------------------------------
 
 painlessMesh  mesh;
+bool calc_delay = false;
 SimpleList<uint32_t> nodes;
 
 RedundantChecker checker;
+
+Task blinkNoNodes;// Task to blink the number of nodes
 
 
 void setup() {
@@ -65,6 +97,11 @@ void setup() {
   digitalWrite(16, LOW);    // set GPIO16 low to reset OLED
   delay(50); 
   digitalWrite(16, HIGH); // while OLED is running, must set GPIO16 in high
+  
+  //pinMode(LED1, OUTPUT);
+  pinMode(5, INPUT);
+  pinMode(LED2, OUTPUT);
+  randomSeed(analogRead(A0));
   
   Serial.begin(115200);
   while (!Serial);
@@ -82,11 +119,10 @@ void setup() {
   display.flipScreenVertically();  
   display.setFont(ArialMT_Plain_10);
   randomSeed(analogRead(0));
-//  --------------------------------------------
   
   //mesh.setDebugMsgTypes( ERROR | MESH_STATUS | CONNECTION | SYNC | COMMUNICATION | GENERAL | MSG_TYPES | REMOTE ); // all types on
   //mesh.setDebugMsgTypes(ERROR | DEBUG | CONNECTION | COMMUNICATION);  // set before init() so that you can see startup messages
-  // mesh.setDebugMsgTypes(ERROR);  // set before init() so that you can see startup messages
+  //mesh.setDebugMsgTypes(ERROR);  // set before init() so that you can see startup messages
 
   mesh.init(MESH_SSID, MESH_PASSWORD, MESH_PORT);
   mesh.onReceive(&receivedCallback);
@@ -94,15 +130,35 @@ void setup() {
   mesh.onChangedConnections(&changedConnectionCallback);
   mesh.onNodeTimeAdjusted(&nodeTimeAdjustedCallback);
   mesh.onNodeDelayReceived(&delayReceivedCallback);
+
+  mesh.scheduler.addTask( taskSendMessage );
+  taskSendMessage.enable() ;
+  
+    blinkNoNodes.set(BLINK_PERIOD, (mesh.getNodeList().size() + 1) * 2, []() {
+      // If on, switch off, else switch on
+      if (onFlag)
+        onFlag = false;
+      else
+        onFlag = true;
+      blinkNoNodes.delay(BLINK_DURATION);
+
+      if (blinkNoNodes.isLastIteration()) {
+        // Finished blinking. Reset task for next run 
+        // blink number of nodes (including this node) times
+        blinkNoNodes.setIterations((mesh.getNodeList().size() + 1) * 2);
+        // Calculate delay based on current mesh time and BLINK_PERIOD
+        // This results in blinks between nodes being synced
+        blinkNoNodes.enableDelayed(BLINK_PERIOD - 
+            (mesh.getNodeTime() % (BLINK_PERIOD*1000))/1000);
+      }
+  });
+  mesh.scheduler.addTask(blinkNoNodes);
+  blinkNoNodes.enable();
 }
 
 void loop() {
   mesh.update();
-  if ((nodes.size() < 1) && (millis() > 15000)){
-    Serial.println("Current Millis:");
-    Serial.println(millis());
-    ESP.deepSleep(20e6);
-  }
+  digitalWrite(LED2, !onFlag);
 }
 //------------------------ MergeJSON ---------------------------
 void mergeJSON(JsonObject& destination, JsonObject& source, String nameofSource) {
@@ -120,11 +176,38 @@ void mergeJSON(JsonObject& destination, JsonObject& source, String nameofSource)
     }
   }
 }
+
+void sendMessage(){
+  OffsetTime = abs(mesh.getNodeTime()-millis()*1000);
+  Serial.println("OffsetTime");
+  Serial.println(OffsetTime);
+  
+  if (exeOnceBroadcast) {
+    exeOnceBroadcast = false;
+    broadcastStartingTime = millis();
+  }
+  unsigned long currentTime = millis();
+  if (currentTime - broadcastStartingTime > broadcastTimeout) {
+    UpdatedSleepTime = SleepTime - OffsetTime-random(-500000,500000);
+    if (UpdatedSleepTime > 3720000000){
+      UpdatedSleepTime = 1;
+    }
+    Serial.println("Updated Sleep Time");
+    Serial.println(UpdatedSleepTime);
+
+    
+    esp_sleep_enable_timer_wakeup(UpdatedSleepTime);
+    if (sendingFlag == false){
+    esp_deep_sleep_start();
+    }
+   }
+}
 //-----------------------------------------------------------------
 
 //=====================buildin tasks to keep mesh network================
 void receivedCallback(uint32_t from, String & msg) {
-  // Serial.printf("Received from %u msg=%s\n", from, msg.c_str());
+  sendingFlag = true;
+  Serial.printf("Received from %u msg=%s\n", from, msg.c_str());
   if (airDataFlag == 0){
     airDataFlag = 1;
     airtemp = random(30);
@@ -134,13 +217,14 @@ void receivedCallback(uint32_t from, String & msg) {
     totalData["airhumi"] = airhumi;
   }
   bool isRedundant = checker.check( msg );
+  Serial.println(isRedundant);
   if (!isRedundant){
-    Serial.println("--------------------");
-    Serial.println("No Redundancy Found!");
-    Serial.println("--------------------");
+//    Serial.println("--------------------");
+//    Serial.println("No Redundancy Found!");
+//    Serial.println("--------------------");
     JsonObject& otherData = restoreJsonBuffer.parseObject(msg);
-    Serial.println("Other Data:");
-    otherData.prettyPrintTo(Serial);
+//    Serial.println("Other Data:");
+//    otherData.prettyPrintTo(Serial);
     //String deviceName = "Sensor " + String(msgsize);
     mergeJSON(totalData, otherData,String(msgsize));
     msgsize++;
@@ -167,13 +251,17 @@ void receivedCallback(uint32_t from, String & msg) {
     //pkgCreated = true;
     counter++;
   }
+  sendingFlag = false;
+//------------------------------------------------  
+
+//--------------------------------------------------------------------------------------------
 }
 
 void newConnectionCallback(uint32_t nodeId) {
   // Reset blink task
-  // onFlag = false;
-  //blinkNoNodes.setIterations((mesh.getNodeList().size() + 1) * 2);
-  // blinkNoNodes.enableDelayed(BLINK_PERIOD - (mesh.getNodeTime() % (BLINK_PERIOD*1000))/1000);
+  onFlag = false;
+  blinkNoNodes.setIterations((mesh.getNodeList().size() + 1) * 2);
+  blinkNoNodes.enableDelayed(BLINK_PERIOD - (mesh.getNodeTime() % (BLINK_PERIOD*1000))/1000);
  
   Serial.printf("--> startHere: New Connection, nodeId = %u\n", nodeId);
 }
@@ -181,9 +269,9 @@ void newConnectionCallback(uint32_t nodeId) {
 void changedConnectionCallback() {
   Serial.printf("Changed connections %s\n", mesh.subConnectionJson().c_str());
   // Reset blink task
-//  onFlag = false;
-//  blinkNoNodes.setIterations((mesh.getNodeList().size() + 1) * 2);
-//  blinkNoNodes.enableDelayed(BLINK_PERIOD - (mesh.getNodeTime() % (BLINK_PERIOD*1000))/1000);
+  onFlag = false;
+  blinkNoNodes.setIterations((mesh.getNodeList().size() + 1) * 2);
+  blinkNoNodes.enableDelayed(BLINK_PERIOD - (mesh.getNodeTime() % (BLINK_PERIOD*1000))/1000);
  
   nodes = mesh.getNodeList();
 
@@ -196,9 +284,7 @@ void changedConnectionCallback() {
     node++;
   }
   Serial.println();
-  //calc_delay = true;
-
-  
+  calc_delay = true;
 }
 
 void nodeTimeAdjustedCallback(int32_t offset) {
