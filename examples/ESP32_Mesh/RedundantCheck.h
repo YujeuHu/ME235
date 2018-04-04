@@ -1,6 +1,6 @@
 #include <ArduinoJson.h>
 
-
+#define MAX_NUM_OF_CLIENT 5
 class RedundantChecker {
     public:
     RedundantChecker();
@@ -9,6 +9,7 @@ class RedundantChecker {
     bool reset();
 
     private:
-    int history[5];
+    int history[MAX_NUM_OF_CLIENT][2];
+
     int numOfRecord;
 };
