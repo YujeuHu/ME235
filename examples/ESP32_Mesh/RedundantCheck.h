@@ -5,7 +5,7 @@ class RedundantChecker {
     public:
     RedundantChecker();
     bool check(String msg);
-    bool check(String msg, unit16_t &prevLength);
+    bool check(String msg, uint16_t &prevLength);
     bool reset();
     bool reset(String msg);
 

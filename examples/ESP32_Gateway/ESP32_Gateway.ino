@@ -1,7 +1,7 @@
 #include <SPI.h>
 #include <LoRa.h>
 #include "SSD1306.h"
-
+#include "RedundantCheck.h"
 SSD1306  display(0x3c, 4, 15);
 
 //OLED pins to ESP32 GPIOs via this connection:
@@ -28,7 +28,7 @@ int counter = 0;
 uint16_t msgMaxLength = 0;
 uint16_t prevLength;
 
-
+RedundantChecker checker;
 
 void setup() {
   pinMode(16,OUTPUT);
@@ -65,14 +65,14 @@ void loop() {
   int packetSize = LoRa.parsePacket();
   if (packetSize) {
     // received a packets
-    Serial.print("Received packet. ");
+    Serial.println("Received packet. ");
 
     // read packet
     while (LoRa.available()) {
       String msg = LoRa.readString();
       bool isRedundant = checker.check(msg,prevLength);
       if(isRedundant){
-        if((msg.length() - prevLength) = 0){//msg is ready to send
+        if((msg.length() - prevLength) == 0){//msg is ready to send
           Serial.println(msg);
         }else if ((msg.length() - prevLength) < 0){
           checker.reset(msg);

@@ -48,11 +48,12 @@ bool RedundantChecker::check(String msg) {
         history[numOfRecord][0] = JSONRestored["DeviceID"];
         return false;
     }
+}
 
-bool RedundantChecker::check(String msg, unit16_t &prevLength) {
+bool RedundantChecker::check(String msg, uint16_t &prevLength) {
     DynamicJsonBuffer restoreJsonBuffer;
     JsonObject& JSONRestored = restoreJsonBuffer.parseObject(msg);
-    l//engthOfMsg = msg.length();
+    //lengthOfMsg = msg.length();
     if (history[0][0] == 0) { //First call
         history[0][0] = JSONRestored["DeviceID"];
         history[0][1] = msg.length();
