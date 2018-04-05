@@ -70,11 +70,17 @@ void loop() {
     // read packet
     while (LoRa.available()) {
       String msg = LoRa.readString();
+      Serial.println(msg);
       bool isRedundant = checker.check(msg,prevLength);
       if(isRedundant){
+        Serial.println("already Received!");
+        Serial.println("PrevLength = " + String(prevLength));
+        Serial.println("CurrentLength = " + String(msg.length()));
         if((msg.length() - prevLength) == 0){//msg is ready to send
+          Serial.println("Complete Msg:");
           Serial.println(msg);
         }else if ((msg.length() - prevLength) < 0){
+          Serial.println("Checker Reset!");
           checker.reset(msg);
         }  
       }

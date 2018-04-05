@@ -17,7 +17,7 @@ bool RedundantChecker::reset() {
 
 bool RedundantChecker::reset(String msg) {
     int cunt = sizeof(history) / (sizeof(history[0][0]) * 2);
-    DynamicJsonBuffer restoreJsonBuffer;
+    StaticJsonBuffer<512> restoreJsonBuffer;
     JsonObject& JSONRestored = restoreJsonBuffer.parseObject(msg);
     for (int i = 0; i < cunt; i++){
         if (history[i][0] == JSONRestored["DeviceID"]) {
@@ -30,12 +30,12 @@ bool RedundantChecker::reset(String msg) {
 }
 
 bool RedundantChecker::check(String msg) {
-    DynamicJsonBuffer restoreJsonBuffer;
+    StaticJsonBuffer<512> restoreJsonBuffer;
     JsonObject& JSONRestored = restoreJsonBuffer.parseObject(msg);
 
     if (history[0][0] == 0) { //First call
         history[0][0] = JSONRestored["DeviceID"];
-        //Serial.println("First Call");
+        // Serial.println("First Call");
         return false;
     } else { // History contains sth
         int cunt = sizeof(history) / (sizeof(history[0][0]) * 2);
@@ -51,7 +51,7 @@ bool RedundantChecker::check(String msg) {
 }
 
 bool RedundantChecker::check(String msg, uint16_t &prevLength) {
-    DynamicJsonBuffer restoreJsonBuffer;
+    StaticJsonBuffer<512> restoreJsonBuffer;
     JsonObject& JSONRestored = restoreJsonBuffer.parseObject(msg);
     //lengthOfMsg = msg.length();
     if (history[0][0] == 0) { //First call
@@ -65,6 +65,7 @@ bool RedundantChecker::check(String msg, uint16_t &prevLength) {
         for (int i = 0; i < cunt; i++) { // treaverse the entire array to find same ID
             if (history[i][0] == JSONRestored["DeviceID"]) { // Redundant ID found
                 prevLength = history[i][1];
+                history[i][1] = msg.length();
                 return true;
             }
         }
