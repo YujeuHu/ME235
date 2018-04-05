@@ -73,7 +73,7 @@ Task taskSendMessage( TASK_SECOND * 2, TASK_FOREVER, &sendMessage ); // start wi
 
   
 StaticJsonBuffer<512> totalBuffer;
-DynamicJsonBuffer restoreJsonBuffer;
+StaticJsonBuffer<512> restoreJsonBuffer;
 
 JsonObject& totalData = totalBuffer.createObject();
 
@@ -247,7 +247,6 @@ void receivedCallback(uint32_t from, String & msg) {
     // send packet
     LoRa.beginPacket();
     LoRa.print(totalDataString);
-    LoRa.print(counter);
     LoRa.endPacket();
     //pkgCreated = true;
     counter++;

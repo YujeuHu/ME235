@@ -140,17 +140,10 @@ void obtainMessage() {
       Root["DeviceID"] = mesh.getNodeId();
       Root["Temp"] = -127;
       Root["Humi"] = -127;
-//      Root["MemoryFree"] = ESP.getFreeHeap();
-//      Root["Task"] = mesh.scheduler.size();
-//      msg = "CNM";
     }else{
       Root["DeviceID"] = mesh.getNodeId();
-      Root["Temp"] = totaltemp/3.0;
-      Root["Humi"] = totalhumi/3.0;
-//      Root["MemoryFree"] = ESP.getFreeHeap();
-//      Root["Task"] = mesh.scheduler.size();
-
-//      msg = "MNC";
+      Root["T"] = round(totaltemp/3.0*100)/100;
+      Root["H"] = round(totalhumi/3.0*100)/100;
 //      msg += "Test ";
 //      msg += mesh.getNodeId();
 //      msg += " Temperature: ";
