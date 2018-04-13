@@ -91,16 +91,14 @@ void loop() {
               Serial.println(msg);
             }
           }
-        }else if ((msg.length() - prevLength) < 0){
+        }else if (((int)msg.length() - (int)prevLength) < 0){
           Serial.println("Checker Reset!");
           checker.reset(msg);
-
         }  
       }else{
         messageFlag =false;
+        sendOnceFlag = false;
       }
     }
-  }else{
-    sendOnceFlag = false;
   }
 }
