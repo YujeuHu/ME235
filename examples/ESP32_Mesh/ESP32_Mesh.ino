@@ -162,10 +162,13 @@ void loop() {
   digitalWrite(LED2, !onFlag);
 }
 //------------------------ MergeJSON ---------------------------
-void mergeJSON(JsonObject& destination, JsonObject& source, String nameofSource) {
+void mergeJSON(JsonObject& destination, JsonObject& source) {
+  nameofSource = String(source.begin() -> value.as<unit32_t>());
   JsonObject& src = destination.createNestedObject(nameofSource);
   for (JsonObject::iterator it=source.begin(); it!=source.end(); ++it) {
-    
+    if (it->key == "DeviceID"){
+      continue;
+    }
     if (it->value.is<char*>()){
       src[it->key] = it->value.as<String>();
     } else if (it->value.is<int>()) {
@@ -227,7 +230,7 @@ void receivedCallback(uint32_t from, String & msg) {
 //    Serial.println("Other Data:");
 //    otherData.prettyPrintTo(Serial);
     //String deviceName = "Sensor " + String(msgsize);
-    mergeJSON(totalData, otherData,String(msgsize));
+    mergeJSON(totalData, otherData);
     msgsize++;
     // Serial.println("Total Data:");
     // totalData.prettyPrintTo(Serial);
