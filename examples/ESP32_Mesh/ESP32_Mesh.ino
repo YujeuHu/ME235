@@ -47,6 +47,7 @@ int airtemp;
 int airhumi;
 int msgsize = 0;
 String totalDataString;
+String totalDataStringCP;
 
 //--------RTC Init------------
 uint32_t SleepInterval = 30*1000000;
@@ -217,7 +218,7 @@ void receivedCallback(uint32_t from, String & msg) {
     totalData["airhumi"] = airhumi;
   }
   bool isRedundant = checker.check( msg );
-  Serial.println(isRedundant);
+  // Serial.println(isRedundant);
   if (!isRedundant){
 //    Serial.println("--------------------");
 //    Serial.println("No Redundancy Found!");
@@ -228,9 +229,11 @@ void receivedCallback(uint32_t from, String & msg) {
     //String deviceName = "Sensor " + String(msgsize);
     mergeJSON(totalData, otherData,String(msgsize));
     msgsize++;
-    Serial.println("Total Data:");
-    totalData.prettyPrintTo(Serial);
+    // Serial.println("Total Data:");
+    // totalData.prettyPrintTo(Serial);
     totalData.printTo(totalDataString);    
+    totalDataStringCP = totalDataString;
+    totalDataString = "";
   }
   if (msgsize > 0){
     
@@ -244,9 +247,11 @@ void receivedCallback(uint32_t from, String & msg) {
     display.drawString(0, 0, "Sending packet: ");
     display.drawString(90, 0, String(counter));
     display.display();
+    Serial.println("Total Data String:");
+    Serial.println(totalDataString);
     // send packet
     LoRa.beginPacket();
-    LoRa.print(totalDataString);
+    LoRa.print(totalDataStringCP);
     LoRa.endPacket();
     //pkgCreated = true;
     counter++;

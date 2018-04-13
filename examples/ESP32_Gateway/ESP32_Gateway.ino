@@ -27,6 +27,9 @@ SSD1306  display(0x3c, 4, 15);
 int counter = 0;
 uint16_t msgMaxLength = 0;
 uint16_t prevLength;
+bool messageFlag = false;
+bool sendOnceFlag = false;
+uint32_t messageTimer = 0;
 
 RedundantChecker checker;
 
@@ -70,20 +73,34 @@ void loop() {
     // read packet
     while (LoRa.available()) {
       String msg = LoRa.readString();
-      Serial.println(msg);
+      //Serial.println(msg);
       bool isRedundant = checker.check(msg,prevLength);
       if(isRedundant){
-        Serial.println("already Received!");
-        Serial.println("PrevLength = " + String(prevLength));
-        Serial.println("CurrentLength = " + String(msg.length()));
+        //Serial.println("already Received!");
+        //Serial.println("PrevLength = " + String(prevLength));
+        //Serial.println("CurrentLength = " + String(msg.length()));
         if((msg.length() - prevLength) == 0){//msg is ready to send
-          Serial.println("Complete Msg:");
-          Serial.println(msg);
+          if (messageFlag == false){
+            messageFlag = true;
+            messageTimer = millis();
+          }
+          if ((millis() - messageTimer) > 5*1000){
+            if (sendOnceFlag == false){
+              sendOnceFlag = true;
+              Serial.println("Complete Msg:");
+              Serial.println(msg);
+            }
+          }
         }else if ((msg.length() - prevLength) < 0){
           Serial.println("Checker Reset!");
           checker.reset(msg);
+
         }  
+      }else{
+        messageFlag =false;
       }
     }
+  }else{
+    sendOnceFlag = false;
   }
 }
