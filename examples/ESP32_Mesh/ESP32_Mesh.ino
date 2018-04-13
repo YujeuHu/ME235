@@ -163,12 +163,12 @@ void loop() {
 }
 //------------------------ MergeJSON ---------------------------
 void mergeJSON(JsonObject& destination, JsonObject& source) {
-  nameofSource = String(source.begin() -> value.as<unit32_t>());
+  String  nameofSource = String(source.begin() -> value.as<uint32_t>());
   JsonObject& src = destination.createNestedObject(nameofSource);
-  for (JsonObject::iterator it=source.begin(); it!=source.end(); ++it) {
-    if (it->key == "DeviceID"){
-      continue;
-    }
+  for (JsonObject::iterator it = ++source.begin(); it!=source.end(); ++it) {
+//    if (it->key == "DeviceID"){
+//      continue;
+//    }
     if (it->value.is<char*>()){
       src[it->key] = it->value.as<String>();
     } else if (it->value.is<int>()) {
