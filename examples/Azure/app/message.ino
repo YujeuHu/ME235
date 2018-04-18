@@ -1,14 +1,14 @@
 #include <ArduinoJson.h>
-#include <DHT.h>
-#include <SPI.h>
+// #include <DHT.h>
+//#include <SPI.h>
 #include <LoRa.h>
-#include "SSD1306.h"
+//#include "SSD1306.h"
 #include "RedundantCheck.h"
 
-#define SS      18
-#define RST     14
-#define DI0     26
-#define BAND    868E6
+//#define SS      18
+//#define RST     14
+//#define DI0     26
+//#define BAND    868E6
 
 int counter = 0;
 uint16_t msgMaxLength = 0;
@@ -19,83 +19,47 @@ uint32_t messageTimer = 0;
 
 RedundantChecker checker;
 
-#if SIMULATED_DATA
-
-void initSensor()
-{
-    // use SIMULATED_DATA, no sensor need to be inited
-}
-
-float readTemperature()
-{
-    return random(20, 30);
-}
-
-float readHumidity()
-{
-    return random(30, 40);
-}
-
-#else
-
-static DHT dht(DHT_PIN, DHT_TYPE);
-void initSensor()
-{
-    dht.begin();
-}
-
-float readTemperature()
-{
-    return dht.readTemperature();
-}
-
-float readHumidity()
-{
-    return dht.readHumidity();
-}
-
-#endif
 
 void readMessage(int messageId, String &payload)
 {
-  payload = "";
-    int packetSize = LoRa.parsePacket();
-  if (packetSize) {
-    // received a packets
-    Serial.println("Received packet. ");
+  payload = "{\"DeviceID\":2758734973,\"airtemp\":0,\"airhumi\":5,\"3893651586\":{\"T\":7,\"H\":42},\"3163568818\":{\"T\":1,\"H\":36},\"2138597866\":{\"T\":6,\"H\":43}}";
+  // int packetSize = LoRa.parsePacket();
+  // if (packetSize) {
+  //   // received a packets
+  //   Serial.println("Received packet. ");
 
-    // read packet
-    while (LoRa.available()) {
-      String msg = LoRa.readString();
-      //Serial.println(msg);
-      bool isRedundant = checker.check(msg,prevLength);
-      if(isRedundant){
-        //Serial.println("already Received!");
-        //Serial.println("PrevLength = " + String(prevLength));
-        //Serial.println("CurrentLength = " + String(msg.length()));
-        if((msg.length() - prevLength) == 0){//msg is ready to send
-          if (messageFlag == false){
-            messageFlag = true;
-            messageTimer = millis();
-          }
-          if ((millis() - messageTimer) > 5*1000){
-            if (sendOnceFlag == false){
-              sendOnceFlag = true;
-              Serial.println("Complete Msg:");
-              Serial.println(msg);
-              payload = msg;
-            }
-          }
-        }else if (((int)msg.length() - (int)prevLength) < 0){
-          Serial.println("Checker Reset!");
-          checker.reset(msg);
-        }  
-      }else{
-        messageFlag =false;
-        sendOnceFlag = false;
-      }
-    }
-  }
+  //   // read packet
+  //   while (LoRa.available()) {
+  //     String msg = LoRa.readString();
+  //     //Serial.println(msg);
+  //     bool isRedundant = checker.check(msg,prevLength);
+  //     if(isRedundant){
+  //       //Serial.println("already Received!");
+  //       //Serial.println("PrevLength = " + String(prevLength));
+  //       //Serial.println("CurrentLength = " + String(msg.length()));
+  //       if((msg.length() - prevLength) == 0){//msg is ready to send
+  //         if (messageFlag == false){
+  //           messageFlag = true;
+  //           messageTimer = millis();
+  //         }
+  //         if ((millis() - messageTimer) > 5*1000){
+  //           if (sendOnceFlag == false){
+  //             sendOnceFlag = true;
+  //             Serial.println("Complete Msg:");
+  //             Serial.println(msg);
+  //             payload = msg;
+  //           }
+  //         }
+  //       }else if (((int)msg.length() - (int)prevLength) < 0){
+  //         Serial.println("Checker Reset!");
+  //         checker.reset(msg);
+  //       }  
+  //     }else{
+  //       messageFlag =false;
+  //       sendOnceFlag = false;
+  //     }
+  //   }
+  // }
 }
 
 void parseTwinMessage(char *message)

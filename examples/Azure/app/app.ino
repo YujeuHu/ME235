@@ -121,7 +121,7 @@ void setup()
 
     initWifi();
     initTime();
-    initSensor();
+    // initSensor();
     
     /*
     * Break changes in version 1.0.34: AzureIoTHub library removed AzureIoTClient class.
