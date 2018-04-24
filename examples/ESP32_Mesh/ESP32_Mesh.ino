@@ -164,6 +164,7 @@ void loop() {
 //------------------------ MergeJSON ---------------------------
 void mergeJSON(JsonObject& destination, JsonObject& source) {
   String  nameofSource = String(source.begin() -> value.as<uint32_t>());
+  nameofSource = "ID" + nameofSource;
   JsonObject& src = destination.createNestedObject(nameofSource);
   for (JsonObject::iterator it = ++source.begin(); it!=source.end(); ++it) {
 //    if (it->key == "DeviceID"){
@@ -251,7 +252,7 @@ void receivedCallback(uint32_t from, String & msg) {
     display.drawString(90, 0, String(counter));
     display.display();
     Serial.println("Total Data String:");
-    Serial.println(totalDataString);
+    Serial.println(totalDataStringCP);
     // send packet
     LoRa.beginPacket();
     LoRa.print(totalDataStringCP);

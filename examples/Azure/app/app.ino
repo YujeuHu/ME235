@@ -150,10 +150,14 @@ void loop()
         String msg;
         char messagePayload[MESSAGE_MAX_LEN];
         readMessage(messageCount, msg);
+
+        if (msg != "") {
+          msg.toCharArray(messagePayload,msg.length());
+          sendMessage(iotHubClientHandle, messagePayload, false);
+        }
         // uint32_t len = msg.length();
-        msg.toCharArray(messagePayload,msg.length());
-        sendMessage(iotHubClientHandle, messagePayload, false);
-        messageCount++;
+        
+        // messageCount++;
         delay(interval);
     }
     IoTHubClient_LL_DoWork(iotHubClientHandle);
