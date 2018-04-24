@@ -14,7 +14,7 @@
 #include <SPI.h>
 #include <LoRa.h>
 #include "SSD1306.h"
-// #include "RedundantCheck.h"
+#include "RedundantCheck.h"
 SSD1306  display(0x3c, 4, 15);
 #define SS      18
 #define RST     14
@@ -31,6 +31,16 @@ static char *ssid;
 static char *pass;
 
 static int interval = INTERVAL;
+
+int counter = 0;
+uint16_t msgMaxLength = 0;
+uint16_t prevLength;
+bool messageFlag = false;
+bool sendOnceFlag = false;
+uint32_t messageTimer = 0;
+
+RedundantChecker checker;
+
 
 void blinkLED()
 {
@@ -77,7 +87,7 @@ void initTime()
         }
         else
         {
-            Serial.printf("Fetched NTP epoch time is: %lu.\r\n", epochTime);
+            Serial.printf("Fetched NTP epoch time is: %ld.\r\n", epochTime);
             break;
         }
     }
@@ -145,20 +155,59 @@ void setup()
 static int messageCount = 1;
 void loop()
 {
+  String payload = "";
+  int packetSize = LoRa.parsePacket();
+  if (packetSize) {
+      // received a packets
+      Serial.println("Received packet. ");
+
+     // read packet
+     while (LoRa.available()) {
+       String msg = LoRa.readString();
+       Serial.println(msg);
+       bool isRedundant = checker.check(msg,prevLength);
+       if(isRedundant){
+         //Serial.println("already Received!");
+         //Serial.println("PrevLength = " + String(prevLength));
+        //Serial.println("CurrentLength = " + String(msg.length()));
+         if((msg.length() - prevLength) == 0){//msg is ready to send
+           if (messageFlag == false){
+             messageFlag = true;
+             messageTimer = millis();
+           }
+           if ((millis() - messageTimer) > 5*1000){
+             if (sendOnceFlag == false){
+               sendOnceFlag = true;
+               Serial.println("Complete Msg:");
+               Serial.println(msg);
+               payload = msg;
+               payload = payload +"}";
+             }
+           }
+         }else if (((int)msg.length() - (int)prevLength) < 0){
+           Serial.println("Checker Reset!");
+           checker.reset(msg);
+         }  
+       }else{
+         messageFlag =false;
+         sendOnceFlag = false;
+       }
+     }
+   }
     if (!messagePending && messageSending)
     {
         String msg;
         char messagePayload[MESSAGE_MAX_LEN];
-        readMessage(messageCount, msg);
+        // readMessage(messageCount, msg);
 
-        if (msg != "") {
-          msg.toCharArray(messagePayload,msg.length());
+        if (payload != "") {
+          payload.toCharArray(messagePayload,payload.length());
           sendMessage(iotHubClientHandle, messagePayload, false);
         }
         // uint32_t len = msg.length();
         
         // messageCount++;
-        delay(interval);
+        // delay(interval);
     }
     IoTHubClient_LL_DoWork(iotHubClientHandle);
     delay(10);
