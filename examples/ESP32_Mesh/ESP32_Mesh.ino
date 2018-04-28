@@ -55,7 +55,7 @@ String totalDataStringCP;
 
 //--------RTC Init------------
 //uint32_t SleepInterval = 30*1000000;
-uint32_t SleepTime = 600*1000000;
+uint32_t SleepTime = 120*1000000;
 uint32_t UpdatedSleepTime;
 
 //--------Flag Init-----------
@@ -71,7 +71,7 @@ String msg="";
 //--------Time Spec----------
 unsigned long broadcastTimeout = 60 * 1000;//milli
 //unsigned long sleepInterval = 4294967295; //micro
-unsigned long noConnectionTimeout = 9 * 1000;//milli
+// unsigned long noConnectionTimeout = 9 * 1000;//milli
 
 void sendMessage();
 Task taskSendMessage( TASK_SECOND * 2, TASK_FOREVER, &sendMessage ); // start with a one second interval
@@ -187,7 +187,7 @@ void mergeJSON(JsonObject& destination, JsonObject& source) {
 }
 
 void sendMessage(){
-  OffsetTime = abs((uint64_t)mesh.getNodeTime()-millis()*1000);
+  OffsetTime = mesh.getNodeTime()-millis()*1000;
   Serial.println("OffsetTime");
   Serial.println(OffsetTime);
   
