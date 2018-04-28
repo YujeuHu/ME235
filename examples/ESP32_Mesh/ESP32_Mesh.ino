@@ -6,6 +6,7 @@
 //
 //************************************************************
 #include <painlessMesh.h>
+#include "DHT.h"
 #include <ArduinoJson.h>
 #include "RedundantCheck.h"
 
@@ -23,6 +24,9 @@
 #define   BLINK_PERIOD    2000 // milliseconds until cycle repeat
 #define   BLINK_DURATION  100  // milliseconds LED is on for
 
+#define DHTPIN 5
+#define DHTTYPE DHT11
+DHT dht(DHTPIN, DHTTYPE, 15);
 #define   MESH_SSID       "whateverYouLike"
 #define   MESH_PASSWORD   "somethingSneaky"
 #define   MESH_PORT       5555
@@ -51,7 +55,7 @@ String totalDataStringCP;
 
 //--------RTC Init------------
 uint32_t SleepInterval = 30*1000000;
-uint32_t SleepTime = 20*1000000;
+uint32_t SleepTime = 600*1000000;
 uint32_t UpdatedSleepTime;
 
 //--------Flag Init-----------
@@ -65,7 +69,7 @@ bool sendingFlag = false;
 String msg="";
 
 //--------Time Spec----------
-unsigned long broadcastTimeout = 20 * 1000;//milli
+unsigned long broadcastTimeout = 60 * 1000;//milli
 //unsigned long sleepInterval = 4294967295; //micro
 unsigned long noConnectionTimeout = 9 * 1000;//milli
 
@@ -94,7 +98,7 @@ void setup() {
 // ---------------Lora-------------------
   pinMode(16,OUTPUT);
   pinMode(25,OUTPUT);
-  
+  dht.begin();
   digitalWrite(16, LOW);    // set GPIO16 low to reset OLED
   delay(50); 
   digitalWrite(16, HIGH); // while OLED is running, must set GPIO16 in high
@@ -159,7 +163,7 @@ void setup() {
 
 void loop() {
   mesh.update();
-  digitalWrite(LED2, !onFlag);
+//  digitalWrite(LED2, !onFlag);
 }
 //------------------------ MergeJSON ---------------------------
 void mergeJSON(JsonObject& destination, JsonObject& source) {
@@ -183,7 +187,7 @@ void mergeJSON(JsonObject& destination, JsonObject& source) {
 }
 
 void sendMessage(){
-  OffsetTime = abs(mesh.getNodeTime()-millis()*1000);
+  OffsetTime = abs((uint64_t)mesh.getNodeTime()-millis()*1000);
   Serial.println("OffsetTime");
   Serial.println(OffsetTime);
   
@@ -193,7 +197,7 @@ void sendMessage(){
   }
   unsigned long currentTime = millis();
   if (currentTime - broadcastStartingTime > broadcastTimeout) {
-    UpdatedSleepTime = SleepTime - OffsetTime-random(-500000,500000);
+    UpdatedSleepTime = SleepTime - OffsetTime;//-random(-500000,500000);
     if (UpdatedSleepTime > 3720000000){
       UpdatedSleepTime = 1;
     }
@@ -201,7 +205,7 @@ void sendMessage(){
     Serial.println(UpdatedSleepTime);
 
     
-    esp_sleep_enable_timer_wakeup(UpdatedSleepTime);
+    esp_sleep_enable_timer_wakeup((uint64_t)UpdatedSleepTime);
     if (sendingFlag == false){
     esp_deep_sleep_start();
     }
@@ -215,6 +219,8 @@ void receivedCallback(uint32_t from, String & msg) {
   Serial.printf("Received from %u msg=%s\n", from, msg.c_str());
   if (airDataFlag == 0){
     airDataFlag = 1;
+    int h = dht.readHumidity();
+    int t = dht.readTemperature();
     airtemp = random(30);
     airhumi = random(100);
     totalData["DeviceID"] = mesh.getNodeId();

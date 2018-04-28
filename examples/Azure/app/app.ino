@@ -166,6 +166,8 @@ void loop()
        String msg = LoRa.readString();
        Serial.println(msg);
        bool isRedundant = checker.check(msg,prevLength);
+       Serial.println("Prev Length = " + String(prevLength));
+       Serial.println("Redundant? = " + String(isRedundant));
        if(isRedundant){
          //Serial.println("already Received!");
          //Serial.println("PrevLength = " + String(prevLength));

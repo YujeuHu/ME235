@@ -8,7 +8,7 @@
 //************************************************************
 
 #include <painlessMesh.h>
-#include "DHT.h"
+//#include "DHT.h"
 #include "ArduinoJson.h"
 #include "sleepTimer.h"
 
@@ -16,9 +16,9 @@ sleepTimer Timer;
 
 #define   LED1             D3 
 #define   LED2             2
-#define DHTPIN 5
-#define DHTTYPE DHT11
-DHT dht(DHTPIN, DHTTYPE, 15);
+//#define DHTPIN 5
+//#define DHTTYPE DHT11
+//DHT dht(DHTPIN, DHTTYPE, 15);
 
 #define   BLINK_PERIOD    2000 // milliseconds until cycle repeat
 #define   BLINK_DURATION  100  // milliseconds LED is on for
@@ -28,8 +28,8 @@ DHT dht(DHTPIN, DHTTYPE, 15);
 #define   MESH_PORT       5555
 
 //--------RTC Init------------
-uint64_t SleepTime = 20*1000000;
-uint64_t UpdatedSleepTime;
+uint32_t SleepTime = 600*1000000;
+uint32_t UpdatedSleepTime;
 
 //--------Flag Init-----------
 int8_t SensorFlag = 1;
@@ -45,9 +45,12 @@ unsigned long broadcastStartingTime = 0;
 unsigned long noConnectionStartTime = 0;
 bool exeOnceConnection = true;
 String msg="";
+int sensor_pin = A0; 
+int output_value ;
+
 
 //--------Time Spec----------
-unsigned long broadcastTimeout = 20 * 1000;//milli
+unsigned long broadcastTimeout = 60 * 1000;//milli
 //unsigned long sleepInterval = 4294967295; //micro
 unsigned long noConnectionTimeout = 9 * 1000;//milli
 
@@ -72,7 +75,7 @@ void setup() {
   pinMode(LED1, OUTPUT);
   pinMode(5, INPUT);
   pinMode(LED2, OUTPUT);
-  randomSeed(analogRead(A0));
+  pinMode(A0,INPUT);
 
   
 
@@ -80,7 +83,7 @@ void setup() {
 //--------------------Extend Sleep Time If > 71 Mins By Accessing RTC Memory---------------
 Timer.startSleeping();
 //----------------------------------------------------------------------------------------
-  dht.begin();
+//  dht.begin();
   //mesh.setDebugMsgTypes( ERROR | MESH_STATUS | CONNECTION | SYNC | COMMUNICATION | GENERAL | MSG_TYPES | REMOTE ); // all types on
   //mesh.setDebugMsgTypes(ERROR | DEBUG | CONNECTION | COMMUNICATION);  // set before init() so that you can see startup messages
   mesh.setDebugMsgTypes(ERROR | DEBUG | CONNECTION);  // set before init() so that you can see startup messages
@@ -129,10 +132,12 @@ void loop() {
 
 void obtainMessage() {
 
-  int h = dht.readHumidity();
-  int t = dht.readTemperature();
+//  int h = dht.readHumidity();
+//  int t = dht.readTemperature();
+  output_value= analogRead(sensor_pin);
+  output_value = map(output_value,765,360,0,100);
   totaltemp += random(0,30);
-  totalhumi += random(0,100);
+  totalhumi += output_value;
   SensorFlag += 1;
 
   if (SensorFlag == SensorDataSize){
@@ -170,12 +175,12 @@ void sendMessage(){
   }
   unsigned long currentTime = millis();
   if (currentTime - broadcastStartingTime > broadcastTimeout) {
-    UpdatedSleepTime = SleepTime - OffsetTime-random(-500000,500000);
+    UpdatedSleepTime = SleepTime - OffsetTime;//-random(-500000,500000);
     if (UpdatedSleepTime > 3720000000){
       UpdatedSleepTime = 1;
     }
     
-    Timer.setSleepTime((uint64_t)UpdatedSleepTime);
+    Timer.setSleepTime((uint32_t)UpdatedSleepTime);
     
     Timer.startSleeping();
    }

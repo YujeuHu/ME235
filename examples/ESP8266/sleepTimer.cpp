@@ -45,8 +45,8 @@ void sleepTimer::startSleeping() {
 // Helper Functions
 
 void sleepTimer::convertMusToHrAndRemainingMus(uint64_t timeInMus, uint32_t &timeInHr, uint32_t &timeInRemainingMus){
-    timeInHr = timeInMus / (3600 * 100 * 100); // extract Hr
-    timeInRemainingMus = timeInMus % (3600 * 100 * 100);
+    timeInHr = timeInMus / (3600 * 1000 * 1000); // extract Hr
+    timeInRemainingMus = timeInMus % (3600 * 1000 * 1000);
 }
 
 
