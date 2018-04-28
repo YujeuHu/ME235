@@ -24,6 +24,10 @@ uint32_t ICACHE_FLASH_ATTR painlessMesh::getNodeTime(void) {
     return ret;
 }
 
+uint32_t ICACHE_FLASH_ATTR painlessMesh::getOffsetTime(void) {
+    return timeAdjuster;
+}
+
 //***********************************************************************
 String ICACHE_FLASH_ATTR timeSync::buildTimeStamp(timeSyncMessageType_t timeSyncMessageType, uint32_t originateTS, uint32_t receiveTS, uint32_t transmitTS) {
     staticThis->debugMsg(S_TIME, "buildTimeStamp(): Type = %u, t0 = %u, t1 = %u, t2 = %u\n", timeSyncMessageType, originateTS, receiveTS, transmitTS);

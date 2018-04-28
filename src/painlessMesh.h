@@ -102,6 +102,7 @@ public:
 
     // in painlessMeshSync.cpp
     uint32_t            getNodeTime(void);
+    uint32_t            getOffsetTime(void);
 
     // in painlessMeshSTA.cpp
     uint32_t            encodeNodeId(uint8_t *hwaddr);

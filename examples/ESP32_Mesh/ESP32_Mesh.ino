@@ -187,7 +187,7 @@ void mergeJSON(JsonObject& destination, JsonObject& source) {
 }
 
 void sendMessage(){
-  OffsetTime = mesh.getNodeTime()-millis()*1000;
+  OffsetTime = mesh.getOffsetTime();
   Serial.println("OffsetTime");
   Serial.println(OffsetTime);
   
