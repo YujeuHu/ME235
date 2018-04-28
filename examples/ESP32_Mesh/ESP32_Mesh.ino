@@ -41,9 +41,9 @@ DHT dht(DHTPIN, DHTTYPE, 15);
 #define BAND    868E6
 
 //-------------Lora------------------------
-unsigned int counter = 0;
+// unsigned int counter = 0;
 
-// SSD1306 display(0x3c, 4, 15);
+// SSD1306 display(0x3c, 4, 15); 
 // String rssi = "RSSI --";
 // String packSize = "--";
 String packet ;
@@ -264,7 +264,7 @@ void receivedCallback(uint32_t from, String & msg) {
     LoRa.print(totalDataStringCP);
     LoRa.endPacket();
     //pkgCreated = true;
-    counter++;
+    // counter++;
   }
   sendingFlag = false;
 //------------------------------------------------  
