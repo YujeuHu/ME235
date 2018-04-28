@@ -15,16 +15,16 @@
 #include <SPI.h>
 #include <LoRa.h>
 #include <Wire.h>  
-#include "SSD1306.h" 
+// #include "SSD1306.h" 
 //#include "images.h"
 //-------------------------------------------------
 
-//#define   LED1             D3 
-#define   LED2             2
-#define   BLINK_PERIOD    2000 // milliseconds until cycle repeat
-#define   BLINK_DURATION  100  // milliseconds LED is on for
+// #define   LED1             D3 
+// #define   LED2             2
+// #define   BLINK_PERIOD    2000 // milliseconds until cycle repeat
+// #define   BLINK_DURATION  100  // milliseconds LED is on for
 
-#define DHTPIN 5
+#define DHTPIN 35
 #define DHTTYPE DHT11
 DHT dht(DHTPIN, DHTTYPE, 15);
 #define   MESH_SSID       "whateverYouLike"
@@ -43,9 +43,9 @@ DHT dht(DHTPIN, DHTTYPE, 15);
 //-------------Lora------------------------
 unsigned int counter = 0;
 
-SSD1306 display(0x3c, 4, 15);
-String rssi = "RSSI --";
-String packSize = "--";
+// SSD1306 display(0x3c, 4, 15);
+// String rssi = "RSSI --";
+// String packSize = "--";
 String packet ;
 int airtemp;
 int airhumi;
@@ -54,7 +54,7 @@ String totalDataString;
 String totalDataStringCP;
 
 //--------RTC Init------------
-uint32_t SleepInterval = 30*1000000;
+//uint32_t SleepInterval = 30*1000000;
 uint32_t SleepTime = 600*1000000;
 uint32_t UpdatedSleepTime;
 
@@ -63,7 +63,7 @@ int32_t OffsetTime = 0;
 bool exeOnceBroadcast = true;
 bool onFlag = false;
 unsigned long broadcastStartingTime = 0;
-unsigned long noConnectionStartTime = 0;
+// unsigned long noConnectionStartTime = 0;
 bool exeOnceConnection = true;
 bool sendingFlag = false;
 String msg="";
@@ -91,22 +91,22 @@ SimpleList<uint32_t> nodes;
 
 RedundantChecker checker;
 
-Task blinkNoNodes;// Task to blink the number of nodes
+// Task blinkNoNodes;// Task to blink the number of nodes
 
 
 void setup() {
 // ---------------Lora-------------------
-  pinMode(16,OUTPUT);
+  // pinMode(16,OUTPUT);
   pinMode(25,OUTPUT);
   dht.begin();
-  digitalWrite(16, LOW);    // set GPIO16 low to reset OLED
-  delay(50); 
-  digitalWrite(16, HIGH); // while OLED is running, must set GPIO16 in high
+  // digitalWrite(16, LOW);    // set GPIO16 low to reset OLED
+  // delay(50); 
+  // digitalWrite(16, HIGH); // while OLED is running, must set GPIO16 in high
   
   //pinMode(LED1, OUTPUT);
-  pinMode(5, INPUT);
-  pinMode(LED2, OUTPUT);
-  randomSeed(analogRead(A0));
+  pinMode(5, INPUT); // DHT Pin
+  // pinMode(LED2, OUTPUT);
+  // randomSeed(analogRead(A0));
   
   Serial.begin(115200);
   while (!Serial);
@@ -120,9 +120,9 @@ void setup() {
     while (1);
   }
   Serial.println("init ok");
-  display.init();
-  display.flipScreenVertically();  
-  display.setFont(ArialMT_Plain_10);
+  // display.init();
+  // display.flipScreenVertically();  
+  // display.setFont(ArialMT_Plain_10);
   randomSeed(analogRead(0));
   
   //mesh.setDebugMsgTypes( ERROR | MESH_STATUS | CONNECTION | SYNC | COMMUNICATION | GENERAL | MSG_TYPES | REMOTE ); // all types on
@@ -139,26 +139,26 @@ void setup() {
   mesh.scheduler.addTask( taskSendMessage );
   taskSendMessage.enable() ;
   
-    blinkNoNodes.set(BLINK_PERIOD, (mesh.getNodeList().size() + 1) * 2, []() {
-      // If on, switch off, else switch on
-      if (onFlag)
-        onFlag = false;
-      else
-        onFlag = true;
-      blinkNoNodes.delay(BLINK_DURATION);
+  //   blinkNoNodes.set(BLINK_PERIOD, (mesh.getNodeList().size() + 1) * 2, []() {
+  //     // If on, switch off, else switch on
+  //     if (onFlag)
+  //       onFlag = false;
+  //     else
+  //       onFlag = true;
+  //     blinkNoNodes.delay(BLINK_DURATION);
 
-      if (blinkNoNodes.isLastIteration()) {
-        // Finished blinking. Reset task for next run 
-        // blink number of nodes (including this node) times
-        blinkNoNodes.setIterations((mesh.getNodeList().size() + 1) * 2);
-        // Calculate delay based on current mesh time and BLINK_PERIOD
-        // This results in blinks between nodes being synced
-        blinkNoNodes.enableDelayed(BLINK_PERIOD - 
-            (mesh.getNodeTime() % (BLINK_PERIOD*1000))/1000);
-      }
-  });
-  mesh.scheduler.addTask(blinkNoNodes);
-  blinkNoNodes.enable();
+  //     if (blinkNoNodes.isLastIteration()) {
+  //       // Finished blinking. Reset task for next run 
+  //       // blink number of nodes (including this node) times
+  //       blinkNoNodes.setIterations((mesh.getNodeList().size() + 1) * 2);
+  //       // Calculate delay based on current mesh time and BLINK_PERIOD
+  //       // This results in blinks between nodes being synced
+  //       blinkNoNodes.enableDelayed(BLINK_PERIOD - 
+  //           (mesh.getNodeTime() % (BLINK_PERIOD*1000))/1000);
+  //     }
+  // });
+  // mesh.scheduler.addTask(blinkNoNodes);
+  // blinkNoNodes.enable();
 }
 
 void loop() {
@@ -250,13 +250,13 @@ void receivedCallback(uint32_t from, String & msg) {
     //airDataFlag == 0;
     //msgsize=0;
     
-    display.clear();
-    display.setTextAlignment(TEXT_ALIGN_LEFT);
-    display.setFont(ArialMT_Plain_10);
+    // display.clear();
+    // display.setTextAlignment(TEXT_ALIGN_LEFT);
+    // display.setFont(ArialMT_Plain_10);
   
-    display.drawString(0, 0, "Sending packet: ");
-    display.drawString(90, 0, String(counter));
-    display.display();
+    // display.drawString(0, 0, "Sending packet: ");
+    // display.drawString(90, 0, String(counter));
+    // display.display();
     Serial.println("Total Data String:");
     Serial.println(totalDataStringCP);
     // send packet
@@ -275,8 +275,8 @@ void receivedCallback(uint32_t from, String & msg) {
 void newConnectionCallback(uint32_t nodeId) {
   // Reset blink task
   onFlag = false;
-  blinkNoNodes.setIterations((mesh.getNodeList().size() + 1) * 2);
-  blinkNoNodes.enableDelayed(BLINK_PERIOD - (mesh.getNodeTime() % (BLINK_PERIOD*1000))/1000);
+  // blinkNoNodes.setIterations((mesh.getNodeList().size() + 1) * 2);
+  // blinkNoNodes.enableDelayed(BLINK_PERIOD - (mesh.getNodeTime() % (BLINK_PERIOD*1000))/1000);
  
   Serial.printf("--> startHere: New Connection, nodeId = %u\n", nodeId);
 }
@@ -285,8 +285,8 @@ void changedConnectionCallback() {
   Serial.printf("Changed connections %s\n", mesh.subConnectionJson().c_str());
   // Reset blink task
   onFlag = false;
-  blinkNoNodes.setIterations((mesh.getNodeList().size() + 1) * 2);
-  blinkNoNodes.enableDelayed(BLINK_PERIOD - (mesh.getNodeTime() % (BLINK_PERIOD*1000))/1000);
+  // blinkNoNodes.setIterations((mesh.getNodeList().size() + 1) * 2);
+  // blinkNoNodes.enableDelayed(BLINK_PERIOD - (mesh.getNodeTime() % (BLINK_PERIOD*1000))/1000);
  
   nodes = mesh.getNodeList();
 
