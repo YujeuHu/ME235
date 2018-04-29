@@ -187,7 +187,7 @@ void mergeJSON(JsonObject& destination, JsonObject& source) {
 }
 
 void sendMessage(){
-  OffsetTime = mesh.getOffsetTime();
+  OffsetTime = abs((uint64_t)mesh.getNodeTime()-millis()*1000);
   Serial.println("OffsetTime");
   Serial.println(OffsetTime);
   
@@ -210,6 +210,11 @@ void sendMessage(){
     esp_deep_sleep_start();
     }
    }
+//   if (mesh.getNodeList().size()>0 ) { 
+//    msg = 'ESP32 LORA Confirm';
+//    bool error = mesh.sendBroadcast(msg,false);
+//    Serial.printf("Sending message: %s\n", msg.c_str());
+//   }
 }
 //-----------------------------------------------------------------
 

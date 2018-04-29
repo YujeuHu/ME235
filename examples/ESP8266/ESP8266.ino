@@ -28,7 +28,7 @@ sleepTimer Timer;
 #define   MESH_PORT       5555
 
 //--------RTC Init------------
-uint32_t SleepTime = 600*1000000;
+uint32_t SleepTime = 120*1000000;
 uint32_t UpdatedSleepTime;
 
 //--------Flag Init-----------
@@ -38,7 +38,7 @@ int totalhumi = 0;
 
 uint8_t SensorDataSize = 3;
 int32_t offset = 0;
-uint64_t OffsetTime = 0;
+int32_t OffsetTime = 0;
 bool exeOnceBroadcast = true;
 bool onFlag = false;
 unsigned long broadcastStartingTime = 0;
@@ -167,7 +167,7 @@ void obtainMessage() {
 void sendMessage(){
   OffsetTime = abs((uint64_t)mesh.getNodeTime()-millis()*1000);
   Serial.println("OffsetTime");
-  Serial.println((uint32_t)OffsetTime);
+  Serial.println(OffsetTime);
   
   if (exeOnceBroadcast) {
     exeOnceBroadcast = false;
@@ -175,7 +175,7 @@ void sendMessage(){
   }
   unsigned long currentTime = millis();
   if (currentTime - broadcastStartingTime > broadcastTimeout) {
-    UpdatedSleepTime = SleepTime - OffsetTime;//-random(-500000,500000);
+    UpdatedSleepTime = SleepTime - OffsetTime-random(-500000,500000);
     if (UpdatedSleepTime > 3720000000){
       UpdatedSleepTime = 1;
     }
