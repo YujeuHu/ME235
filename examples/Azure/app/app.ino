@@ -184,6 +184,19 @@ void loop()
                Serial.println(msg);
                payload = msg;
                payload = payload +"}";
+
+               if (!messagePending && messagesSending)
+                {
+                  // String msg;
+                  char messagePayload[MESSAGE_MAX_LEN];
+                  // readMessage(messageCount, msg);
+
+                  payload.toCharArray(messagePayload,payload.length());
+                  sendMessage(iotHubClientHandle, messagePayload, false);
+                  // uint32_t len = msg.length();
+                  // messageCount++;
+                  // delay(interval);
+                }
              }
            }
          }else if (((int)msg.length() - (int)prevLength) < 0){
@@ -196,21 +209,6 @@ void loop()
        }
      }
    }
-    if (!messagePending && messageSending)
-    {
-        String msg;
-        char messagePayload[MESSAGE_MAX_LEN];
-        // readMessage(messageCount, msg);
-
-        if (payload != "") {
-          payload.toCharArray(messagePayload,payload.length());
-          sendMessage(iotHubClientHandle, messagePayload, false);
-        }
-        // uint32_t len = msg.length();
-        
-        // messageCount++;
-        // delay(interval);
-    }
     IoTHubClient_LL_DoWork(iotHubClientHandle);
     delay(10);
 }
