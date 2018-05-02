@@ -187,6 +187,7 @@ void loop()
                payload = payload +"}";
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
                // String msg;
                // readMessage(messageCount, msg);
                payload.toCharArray(messagePayload,payload.length());
@@ -203,6 +204,8 @@ void loop()
 //             }
 //         }
 =======
+=======
+>>>>>>> parent of 76e5e37... modified send-to-Azure.
 =======
 >>>>>>> parent of 76e5e37... modified send-to-Azure.
              }
