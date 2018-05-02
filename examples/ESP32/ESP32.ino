@@ -10,11 +10,11 @@
 #include <painlessMesh.h>
 //#include "DHT.h"
 #include "ArduinoJson.h"
-#include "sleepTimer.h"
 
-sleepTimer Timer;
 
-#define   LED1             D3 
+
+
+//#define   LED1             D3 
 #define   LED2             2
 //#define DHTPIN 5
 //#define DHTTYPE DHT11
@@ -28,7 +28,7 @@ sleepTimer Timer;
 #define   MESH_PORT       5555
 
 //--------RTC Init------------
-uint32_t SleepTime = 90*1000000;
+uint32_t SleepTime = 120*1000000;
 uint32_t UpdatedSleepTime;
 
 //--------Flag Init-----------
@@ -50,7 +50,7 @@ int output_value ;
 
 
 //--------Time Spec----------
-unsigned long broadcastTimeout = 30 * 1000;//milli
+unsigned long broadcastTimeout = 60 * 1000;//milli
 //unsigned long sleepInterval = 4294967295; //micro
 unsigned long noConnectionTimeout = 9 * 1000;//milli
 
@@ -72,17 +72,15 @@ JsonObject& Root = jsonBuffer.createObject();
 
 void setup() {
   Serial.begin(115200);
-  pinMode(LED1, OUTPUT);
-  pinMode(5, INPUT);
+//  pinMode(LED1, OUTPUT);
+//  pinMode(5, INPUT);
   pinMode(LED2, OUTPUT);
   pinMode(A0,INPUT);
 
   
 
   
-//--------------------Extend Sleep Time If > 71 Mins By Accessing RTC Memory---------------
-Timer.startSleeping();
-//----------------------------------------------------------------------------------------
+
 //  dht.begin();
   //mesh.setDebugMsgTypes( ERROR | MESH_STATUS | CONNECTION | SYNC | COMMUNICATION | GENERAL | MSG_TYPES | REMOTE ); // all types on
   //mesh.setDebugMsgTypes(ERROR | DEBUG | CONNECTION | COMMUNICATION);  // set before init() so that you can see startup messages
@@ -143,8 +141,8 @@ void obtainMessage() {
   if (SensorFlag == SensorDataSize){
     if ((totaltemp/SensorDataSize > 1000 )||( totalhumi/SensorDataSize >1000)) {
       Root["DeviceID"] = mesh.getNodeId();
-      Root["Temp"] =random(0,30);
-      Root["Humi"] =random(0,100);
+      Root["Temp"] = -127;
+      Root["Humi"] = -127;
     }else{
       Root["DeviceID"] = mesh.getNodeId();
       Root["T"] = round(totaltemp/3.0*100)/100;
@@ -179,17 +177,12 @@ void sendMessage(){
     if (UpdatedSleepTime > 4000000000){
       UpdatedSleepTime = 1;
     }
-    
-    Timer.setSleepTime((uint32_t)UpdatedSleepTime);
-    
-    Timer.startSleeping();
+    esp_sleep_enable_timer_wakeup((uint64_t)UpdatedSleepTime);
+    esp_deep_sleep_start();
    }
   if (mesh.getNodeList().size()>0 ) { 
     if (msg != ""){
-//      bool error = mesh.sendBroadcast(msg,false);
-        uint32_t destID = 2758734973;
-      bool error = mesh.sendSingle(destID, msg);
-
+      bool error = mesh.sendBroadcast(msg,false);
 //      if (calc_delay) {
 //        SimpleList<uint32_t>::iterator node = nodes.begin();
 //        while (node != nodes.end()) {

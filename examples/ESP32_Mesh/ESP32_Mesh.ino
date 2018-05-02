@@ -24,9 +24,9 @@
 // #define   BLINK_PERIOD    2000 // milliseconds until cycle repeat
 // #define   BLINK_DURATION  100  // milliseconds LED is on for
 
-#define DHTPIN 35
+#define DHTPIN 17
 #define DHTTYPE DHT11
-DHT dht(DHTPIN, DHTTYPE, 15);
+DHT dht(DHTPIN, DHTTYPE);
 #define   MESH_SSID       "whateverYouLike"
 #define   MESH_PASSWORD   "somethingSneaky"
 #define   MESH_PORT       5555
@@ -55,7 +55,7 @@ String totalDataStringCP;
 
 //--------RTC Init------------
 //uint32_t SleepInterval = 30*1000000;
-uint32_t SleepTime = 120*1000000;
+uint32_t SleepTime = 75*1000000;
 uint32_t UpdatedSleepTime;
 
 //--------Flag Init-----------
@@ -67,9 +67,11 @@ unsigned long broadcastStartingTime = 0;
 bool exeOnceConnection = true;
 bool sendingFlag = false;
 String msg="";
+int h;
+int t;
 
 //--------Time Spec----------
-unsigned long broadcastTimeout = 60 * 1000;//milli
+unsigned long broadcastTimeout = 45 * 1000;//milli
 //unsigned long sleepInterval = 4294967295; //micro
 // unsigned long noConnectionTimeout = 9 * 1000;//milli
 
@@ -107,7 +109,8 @@ void setup() {
   pinMode(5, INPUT); // DHT Pin
   // pinMode(LED2, OUTPUT);
   // randomSeed(analogRead(A0));
-  
+  h = dht.readHumidity();
+  t = dht.readTemperature();
   Serial.begin(115200);
   while (!Serial);
   Serial.println();
@@ -189,7 +192,7 @@ void mergeJSON(JsonObject& destination, JsonObject& source) {
 void sendMessage(){
   OffsetTime = abs((uint64_t)mesh.getNodeTime()-millis()*1000);
   Serial.println("OffsetTime");
-  Serial.println(OffsetTime);
+//  Serial.println(OffsetTime);
   
   if (exeOnceBroadcast) {
     exeOnceBroadcast = false;
@@ -224,10 +227,10 @@ void receivedCallback(uint32_t from, String & msg) {
   Serial.printf("Received from %u msg=%s\n", from, msg.c_str());
   if (airDataFlag == 0){
     airDataFlag = 1;
-    int h = dht.readHumidity();
-    int t = dht.readTemperature();
-    airtemp = random(30);
-    airhumi = random(100);
+//    int h = dht.readHumidity();
+//    int t = dht.readTemperature();
+    airtemp = t;
+    airhumi = h;
     totalData["DeviceID"] = mesh.getNodeId();
     totalData["airtemp"] = airtemp;
     totalData["airhumi"] = airhumi;
