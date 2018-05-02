@@ -29,6 +29,7 @@ static bool messageSending = true;
 static char *connectionString;
 static char *ssid;
 static char *pass;
+char messagePayload[MESSAGE_MAX_LEN];
 
 static int interval = INTERVAL;
 
@@ -173,36 +174,48 @@ void loop()
          //Serial.println("PrevLength = " + String(prevLength));
         //Serial.println("CurrentLength = " + String(msg.length()));
          if((msg.length() - prevLength) == 0){//msg is ready to send
-           if (messageFlag == false){
-             messageFlag = true;
-             messageTimer = millis();
-           }
-           if ((millis() - messageTimer) > 5*1000){
-             if (sendOnceFlag == false){
-               sendOnceFlag = true;
-               Serial.println("Complete Msg:");
-               Serial.println(msg);
+//           if (messageFlag == false){
+//             messageFlag = true;
+//             messageTimer = millis();
+//           }
+//           if ((millis() - messageTimer) > 1*1000){
+//             if (sendOnceFlag == false){
+//               sendOnceFlag = true;
+               // Serial.println("Complete Msg:");
+               // Serial.println(msg);
                payload = msg;
                payload = payload +"}";
-
-               if (!messagePending && messagesSending)
-                {
-                  // String msg;
-                  char messagePayload[MESSAGE_MAX_LEN];
-                  // readMessage(messageCount, msg);
-
-                  payload.toCharArray(messagePayload,payload.length());
-                  sendMessage(iotHubClientHandle, messagePayload, false);
-                  // uint32_t len = msg.length();
-                  // messageCount++;
-                  // delay(interval);
-                }
-             }
-           }
+               // String msg;
+               // readMessage(messageCount, msg);
+               payload.toCharArray(messagePayload,payload.length());
+               
+//               display.clear();
+//               display.setFont(ArialMT_Plain_16);
+//               display.drawString(3, 0, "Received packet ");
+//               String s = "Packet " + String(messageCount) + " Sent to Azure";
+//               display.drawString(20,22, s);
+//               display.display();
+               // uint32_t len = msg.length();
+//                messageCount++;
+               // delay(interval);
+//             }
+//         }
          }else if (((int)msg.length() - (int)prevLength) < 0){
-           Serial.println("Checker Reset!");
+           Serial.println("Complete Msg:");
+           Serial.println(String(messagePayload));
+           sendMessage(iotHubClientHandle, messagePayload, false);
+               display.clear();
+               display.setFont(ArialMT_Plain_16);
+               display.drawString(3, 0, "Received packet ");
+               String s = "Packet " + String(messageCount) + " Sent to Azure";
+               display.drawString(20,22, s);
+               display.display();
+               messageCount++;
+           Serial.println("Message Sent! Checker Reset!");
            checker.reset(msg);
-         }  
+         } else {
+            messageFlag = false;
+         }
        }else{
          messageFlag =false;
          sendOnceFlag = false;
