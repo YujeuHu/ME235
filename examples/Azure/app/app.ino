@@ -185,6 +185,7 @@ void loop()
                // Serial.println(msg);
                payload = msg;
                payload = payload +"}";
+<<<<<<< HEAD
                // String msg;
                // readMessage(messageCount, msg);
                payload.toCharArray(messagePayload,payload.length());
@@ -200,6 +201,10 @@ void loop()
                // delay(interval);
 //             }
 //         }
+=======
+             }
+           }
+>>>>>>> parent of 76e5e37... modified send-to-Azure.
          }else if (((int)msg.length() - (int)prevLength) < 0){
            Serial.println("Complete Msg:");
            Serial.println(String(messagePayload));
@@ -222,6 +227,21 @@ void loop()
        }
      }
    }
+    if (!messagePending && messageSending)
+    {
+        String msg;
+        char messagePayload[MESSAGE_MAX_LEN];
+        // readMessage(messageCount, msg);
+
+        if (payload != "") {
+          payload.toCharArray(messagePayload,payload.length());
+          sendMessage(iotHubClientHandle, messagePayload, false);
+        }
+        // uint32_t len = msg.length();
+        
+        // messageCount++;
+        // delay(interval);
+    }
     IoTHubClient_LL_DoWork(iotHubClientHandle);
     delay(10);
 }
